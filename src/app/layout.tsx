@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import QueryProvider from '@/providers/QueryProvider';
 import './globals.css';
 import Navbar from '@/components/shared/Navbar';
+import { AuthProvider } from '@/providers/AuthProvider';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -23,13 +24,15 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full scroll-smooth">
       <body className={`${jakarta.variable} font-sans antialiased min-h-full flex flex-col bg-background text-foreground`}>
-        <QueryProvider>
-          {/* Main Navigation */}
-          <Navbar />
+        <AuthProvider>
+          <QueryProvider>
+            {/* Main Navigation */}
+            <Navbar />
 
-          {/* Page Content */}
-          <main className="flex-1">{children}</main>
-        </QueryProvider>
+            {/* Page Content */}
+            <main className="flex-1">{children}</main>
+          </QueryProvider>
+        </AuthProvider>
       </body>
     </html>
   );

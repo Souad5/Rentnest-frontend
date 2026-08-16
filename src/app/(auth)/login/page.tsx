@@ -2,104 +2,88 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Building2, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useAuth } from '@/providers/AuthProvider';
+import { ApiError } from '@/lib/api';
 
 export default function LoginPage() {
-    const router = useRouter();
+    const { login } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
-        setIsLoading(true);
+        setError(null);
+        setSubmitting(true);
 
         try {
-            // Replace with actual API call or Auth provider (e.g., NextAuth/Supabase)
-            if (!email || !password) {
-                throw new Error('Please fill in all fields.');
+            await login({ email, password });
+        } catch (err) {
+            if (err instanceof ApiError) {
+                setError(err.message || 'Invalid credentials. Please try again.');
+            } else {
+                setError('An unexpected error occurred. Please try again.');
             }
-
-            // Simulated auth success delay
-            await new Promise((resolve) => setTimeout(resolve, 800));
-            router.push('/dashboard');
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
-            setError(err.message || 'Failed to sign in. Please check your credentials.');
         } finally {
-            setIsLoading(false);
+            setSubmitting(false);
         }
     };
 
     return (
-        <div className="mx-auto max-w-md w-full space-y-6 p-6 sm:p-8 rounded-2xl border border-border bg-card shadow-sm">
-            <div className="space-y-2 text-center">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-2">
-                    <Building2 className="h-6 w-6" />
+        <div className="min-h-screen flex items-center justify-center bg-background px-4">
+            <div className="w-full max-w-md space-y-6 bg-card p-8 rounded-xl border border-border shadow-sm">
+                <div className="text-center space-y-2">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome Back</h1>
+                    <p className="text-sm text-muted-foreground">Log in to your RentNest account</p>
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
-                <p className="text-sm text-muted-foreground">Enter your credentials to access your account</p>
-            </div>
 
-            {error && (
-                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive border border-destructive/20">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span>{error}</span>
-                </div>
-            )}
+                {error && (
+                    <div className="p-3 text-xs text-destructive-foreground bg-destructive/15 border border-destructive/20 rounded-md">
+                        {error}
+                    </div>
+                )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Email Address</label>
-                    <div className="relative">
-                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-foreground">Email Address</label>
+                        <input
                             type="email"
-                            placeholder="name@example.com"
+                            required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="pl-9"
-                            required
+                            className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="name@example.com"
                         />
                     </div>
-                </div>
 
-                <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Password</label>
-                        <Link href="#" className="text-xs text-primary hover:underline font-medium">
-                            Forgot password?
-                        </Link>
-                    </div>
-                    <div className="relative">
-                        <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-foreground">Password</label>
+                        <input
                             type="password"
-                            placeholder="••••••••"
+                            required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="pl-9"
-                            required
+                            className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="••••••••"
                         />
                     </div>
+
+                    <button
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full py-2.5 px-4 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                        {submitting ? 'Logging in...' : 'Sign In'}
+                    </button>
+                </form>
+
+                <div className="text-center text-xs text-muted-foreground">
+                    Don&apos;t have an account?{' '}
+                    <Link href="/register" className="text-primary underline font-medium">
+                        Register here
+                    </Link>
                 </div>
-
-                <Button type="submit" className="w-full gap-2 mt-2" disabled={isLoading}>
-                    {isLoading ? 'Signing in...' : 'Sign In'}
-                    <ArrowRight className="h-4 w-4" />
-                </Button>
-            </form>
-
-            <div className="text-center text-sm text-muted-foreground pt-2">
-                Don&apos;t have an account?{' '}
-                <Link href="/register" className="font-semibold text-primary hover:underline">
-                    Sign up
-                </Link>
             </div>
         </div>
     );

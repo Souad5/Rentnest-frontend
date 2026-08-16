@@ -2,147 +2,129 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Building2, Lock, Mail, User, ShieldCheck, ArrowRight, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useAuth } from '@/providers/AuthProvider';
+import { ApiError } from '@/lib/api';
 
 export default function RegisterPage() {
-    const router = useRouter();
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        password: '',
-        role: 'TENANT', // Default role
-    });
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const { register } = useAuth();
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [role, setRole] = useState<'TENANT' | 'LANDLORD'>('TENANT');
+    const [error, setError] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
-        setIsLoading(true);
+        setError(null);
+        setSubmitting(true);
 
         try {
-            if (!formData.name || !formData.email || !formData.password) {
-                throw new Error('Please fill in all required fields.');
+            await register({ name, email, password, role });
+        } catch (err) {
+            if (err instanceof ApiError) {
+                setError(err.message || 'Registration failed. Please try again.');
+            } else {
+                setError('An unexpected error occurred. Please try again.');
             }
-
-            // Simulated signup delay
-            await new Promise((resolve) => setTimeout(resolve, 800));
-            router.push('/dashboard');
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
-            setError(err.message || 'Registration failed. Please try again.');
         } finally {
-            setIsLoading(false);
+            setSubmitting(false);
         }
     };
 
     return (
-        <div className="mx-auto max-w-md w-full space-y-6 p-6 sm:p-8 rounded-2xl border border-border bg-card shadow-sm">
-            <div className="space-y-2 text-center">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-2">
-                    <Building2 className="h-6 w-6" />
+        <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
+            <div className="w-full max-w-md space-y-6 bg-card p-8 rounded-xl border border-border shadow-sm">
+                <div className="text-center space-y-2">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Create your Account</h1>
+                    <p className="text-sm text-muted-foreground">Join RentNest as a Tenant or Landlord</p>
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">Create an Account</h1>
-                <p className="text-sm text-muted-foreground">Join RentNest to manage or find your next rental home</p>
-            </div>
 
-            {error && (
-                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive border border-destructive/20">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span>{error}</span>
-                </div>
-            )}
+                {error && (
+                    <div className="p-3 text-xs text-destructive-foreground bg-destructive/15 border border-destructive/20 rounded-md">
+                        {error}
+                    </div>
+                )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Full Name */}
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Full Name</label>
-                    <div className="relative">
-                        <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-foreground">Account Type</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setRole('TENANT')}
+                                className={`py-2 text-xs font-semibold rounded-md border transition-colors ${role === 'TENANT'
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                                    }`}
+                            >
+                                Tenant
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setRole('LANDLORD')}
+                                className={`py-2 text-xs font-semibold rounded-md border transition-colors ${role === 'LANDLORD'
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                                    }`}
+                            >
+                                Landlord
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-foreground">Full Name</label>
+                        <input
                             type="text"
+                            required
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                             placeholder="John Doe"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="pl-9"
-                            required
                         />
                     </div>
-                </div>
 
-                {/* Email */}
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Email Address</label>
-                    <div className="relative">
-                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-foreground">Email Address</label>
+                        <input
                             type="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                             placeholder="name@example.com"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="pl-9"
-                            required
                         />
                     </div>
-                </div>
 
-                {/* Password */}
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Password</label>
-                    <div className="relative">
-                        <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-foreground">Password</label>
+                        <input
                             type="password"
-                            placeholder="••••••••"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="pl-9"
                             required
+                            minLength={6}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="••••••••"
                         />
                     </div>
+
+                    <button
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full py-2.5 px-4 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                        {submitting ? 'Creating account...' : `Register as ${role === 'TENANT' ? 'Tenant' : 'Landlord'}`}
+                    </button>
+                </form>
+
+                <div className="text-center text-xs text-muted-foreground">
+                    Already have an account?{' '}
+                    <Link href="/auth/login" className="text-primary underline font-medium">
+                        Log in here
+                    </Link>
                 </div>
-
-                {/* Role Selection */}
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Account Role</label>
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                        <button
-                            type="button"
-                            onClick={() => setFormData({ ...formData, role: 'TENANT' })}
-                            className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium transition-colors ${formData.role === 'TENANT'
-                                ? 'border-primary bg-primary/10 text-primary'
-                                : 'border-input bg-transparent text-muted-foreground hover:bg-accent'
-                                }`}
-                        >
-                            <User className="h-4 w-4" /> Tenant
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setFormData({ ...formData, role: 'LANDLORD' })}
-                            className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium transition-colors ${formData.role === 'LANDLORD'
-                                ? 'border-primary bg-primary/10 text-primary'
-                                : 'border-input bg-transparent text-muted-foreground hover:bg-accent'
-                                }`}
-                        >
-                            <ShieldCheck className="h-4 w-4" /> Landlord
-                        </button>
-                    </div>
-                </div>
-
-                <Button type="submit" className="w-full gap-2 mt-4" disabled={isLoading}>
-                    {isLoading ? 'Creating account...' : 'Create Account'}
-                    <ArrowRight className="h-4 w-4" />
-                </Button>
-            </form>
-
-            <div className="text-center text-sm text-muted-foreground pt-2">
-                Already have an account?{' '}
-                <Link href="/login" className="font-semibold text-primary hover:underline">
-                    Sign in
-                </Link>
             </div>
         </div>
     );

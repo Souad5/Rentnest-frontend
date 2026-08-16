@@ -14,16 +14,21 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User as UserType } from '@/types/api';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface NavbarProps {
-    user?: UserType | null;
+    user?: ReturnType<typeof useAuth>['user'];
     onLogout?: () => void;
 }
 
-export default function Navbar({ user, onLogout }: NavbarProps) {
+export default function Navbar({ user: propUser, onLogout: propOnLogout }: NavbarProps) {
     const pathname = usePathname();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    // Fallback to AuthProvider state if props are not explicitly passed
+    const authContext = useAuth();
+    const user = propUser !== undefined ? propUser : authContext.user;
+    const handleLogout = propOnLogout || authContext.logout;
 
     const navLinks = [
         { name: 'Home', href: '/', icon: Home },
@@ -68,7 +73,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="relative flex items-center gap-2 rounded-full p-1 pr-2">
                                     <Avatar className="h-8 w-8">
-                                        <AvatarImage src={user.avatarUrl} alt={user.name} />
+                                        <AvatarImage src={(user as { avatarUrl?: string }).avatarUrl} alt={user.name} />
                                         <AvatarFallback className="bg-primary/10 text-primary font-bold">
                                             {user.name ? user.name.slice(0, 2).toUpperCase() : 'RN'}
                                         </AvatarFallback>
@@ -88,7 +93,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={onLogout} className="text-destructive flex items-center gap-2 cursor-pointer">
+                                <DropdownMenuItem onClick={handleLogout} className="text-destructive flex items-center gap-2 cursor-pointer">
                                     <LogOut className="h-4 w-4" /> Log out
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -140,7 +145,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                             <div className="space-y-3">
                                 <div className="flex items-center gap-3 px-2">
                                     <Avatar className="h-9 w-9">
-                                        <AvatarImage src={user.avatarUrl} alt={user.name} />
+                                        <AvatarImage src={(user as { avatarUrl?: string }).avatarUrl} alt={user.name} />
                                         <AvatarFallback className="bg-primary/10 text-primary font-bold">
                                             {user.name ? user.name.slice(0, 2).toUpperCase() : 'RN'}
                                         </AvatarFallback>
@@ -158,7 +163,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
                                 <Button
                                     variant="destructive"
                                     className="w-full justify-start gap-2"
-                                    onClick={() => { closeMobileMenu(); onLogout?.(); }}
+                                    onClick={() => { closeMobileMenu(); handleLogout(); }}
                                 >
                                     <LogOut className="h-4 w-4" /> Log out
                                 </Button>
