@@ -5,16 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Building2, Menu, X, LayoutDashboard, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/providers/AuthProvider';
+import { AppButton } from './AppButton';
+import { AppDropdown } from './AppDropdown';
 
 interface NavbarProps {
     user?: ReturnType<typeof useAuth>['user'];
@@ -69,39 +64,57 @@ export default function Navbar({ user: propUser, onLogout: propOnLogout }: Navba
                 {/* Desktop User Menu / Auth Buttons */}
                 <div className="hidden md:flex items-center gap-3">
                     {user ? (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="relative flex items-center gap-2 rounded-full p-1 pr-2">
+                        <AppDropdown
+                            label={user.email}
+                            trigger={
+                                <AppButton
+                                    variant="ghost"
+                                    className="relative flex items-center gap-2 rounded-full p-1 pr-2"
+                                >
                                     <Avatar className="h-8 w-8">
-                                        <AvatarImage src={(user as { avatarUrl?: string }).avatarUrl} alt={user.name} />
+                                        <AvatarImage
+                                            src={(user as { avatarUrl?: string }).avatarUrl}
+                                            alt={user.name}
+                                        />
+
                                         <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                                            {user.name ? user.name.slice(0, 2).toUpperCase() : 'RN'}
+                                            {user.name
+                                                ? user.name.slice(0, 2).toUpperCase()
+                                                : 'RN'}
                                         </AvatarFallback>
                                     </Avatar>
-                                    <span className="text-sm font-medium">{user.name}</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                                <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                    <Link
-                                        href={`/dashboard/${user.role?.toLowerCase() ?? 'tenant'}`}
-                                        className="flex items-center gap-2 cursor-pointer"
-                                    >
-                                        <LayoutDashboard className="h-4 w-4" /> Dashboard
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={handleLogout} className="text-destructive flex items-center gap-2 cursor-pointer">
-                                    <LogOut className="h-4 w-4" /> Log out
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+
+                                    <span className="text-sm font-medium">
+                                        {user.name}
+                                    </span>
+                                </AppButton>
+                            }
+                            items={[
+                                {
+                                    label: 'Dashboard',
+                                    href: `/dashboard/${user.role?.toLowerCase() ?? 'tenant'}`,
+                                    icon: <LayoutDashboard className="h-4 w-4" />,
+                                },
+                                {
+                                    separator: true,
+                                },
+                                {
+                                    label: 'Log out',
+                                    onClick: handleLogout,
+                                    icon: <LogOut className="h-4 w-4" />,
+                                    destructive: true,
+                                },
+                            ]}
+                        />
                     ) : (
                         <div className="flex items-center gap-2">
-                            <Button asChild variant="ghost" size="sm"><Link href="/login">Log in</Link></Button>
-                            <Button asChild size="sm"><Link href="/register">Get Started</Link></Button>
+                            <AppButton asChild variant="ghost" size="sm">
+                                <Link href="/login">Log in</Link>
+                            </AppButton>
+
+                            <AppButton asChild size="sm">
+                                <Link href="/register">Get Started</Link>
+                            </AppButton>
                         </div>
                     )}
                 </div>
