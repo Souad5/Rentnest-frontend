@@ -3,8 +3,8 @@ import { Building2 } from 'lucide-react';
 
 export default function Footer() {
     return (
-        <footer className="border-t border-border bg-card text-card-foreground">
-            <div className="container mx-auto px-4 py-8 sm:px-6">
+        <footer className="border-t border-border bg-card text-card-foreground ">
+            <div className="container px-4 py-8 sm:px-6 max-w-7xl mx-auto">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">

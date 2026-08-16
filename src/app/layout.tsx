@@ -4,6 +4,7 @@ import QueryProvider from '@/providers/QueryProvider';
 import './globals.css';
 import Navbar from '@/components/shared/Navbar';
 import { AuthProvider } from '@/providers/AuthProvider';
+import Footer from '@/components/shared/Footer';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -22,8 +23,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full scroll-smooth">
-      <body className={`${jakarta.variable} font-sans antialiased min-h-full flex flex-col bg-background text-foreground`}>
+    <html
+      lang="en"
+      className="h-full scroll-smooth"
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
+      <body
+        className={`${jakarta.variable} font-sans antialiased min-h-full flex flex-col bg-background text-foreground`}
+        suppressHydrationWarning
+      >
         <AuthProvider>
           <QueryProvider>
             {/* Main Navigation */}
@@ -31,6 +40,9 @@ export default function RootLayout({
 
             {/* Page Content */}
             <main className="flex-1">{children}</main>
+
+            {/* Footer */}
+            <Footer />
           </QueryProvider>
         </AuthProvider>
       </body>

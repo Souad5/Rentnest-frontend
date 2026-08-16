@@ -7,6 +7,15 @@ import { Button } from '@/components/ui/button';
 import PropertyCard from '@/components/shared/PropertyCard';
 import SkeletonCard from '@/components/shared/SkeletonCard';
 import { MOCK_PROPERTIES } from '@/constants/mockProperties';
+import { CustomSelect } from '@/components/shared/Select';
+
+const BEDROOM_OPTIONS = [
+    { label: 'All Bedrooms', value: 'ALL' },
+    { label: '1 Bedroom', value: '1' },
+    { label: '2 Bedrooms', value: '2' },
+    { label: '3 Bedrooms', value: '3' },
+    { label: '4+ Bedrooms', value: '4+' },
+];
 
 export default function PropertiesPage() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -34,7 +43,7 @@ export default function PropertiesPage() {
     const hasActiveFilters = searchTerm !== '' || maxPrice !== '' || bedroomsFilter !== 'ALL';
 
     return (
-        <div className="space-y-8 py-4">
+        <div className="space-y-8 py-4 max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
@@ -72,22 +81,17 @@ export default function PropertiesPage() {
                         />
                     </div>
 
-                    {/* Bedrooms Select */}
-                    <select
+                    {/* Bedrooms Select Component */}
+                    <CustomSelect
                         value={bedroomsFilter}
-                        onChange={(e) => setBedroomsFilter(e.target.value)}
-                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
-                    >
-                        <option value="ALL" className="bg-background text-foreground">All Bedrooms</option>
-                        <option value="1" className="bg-background text-foreground">1 Bedroom</option>
-                        <option value="2" className="bg-background text-foreground">2 Bedrooms</option>
-                        <option value="3" className="bg-background text-foreground">3 Bedrooms</option>
-                        <option value="4+" className="bg-background text-foreground">4+ Bedrooms</option>
-                    </select>
+                        onValueChange={setBedroomsFilter}
+                        options={BEDROOM_OPTIONS}
+                        className="w-full cursor-pointer"
+                    />
 
                     {/* Reset Action */}
                     <Button
-                        variant={hasActiveFilters ? "default" : "outline"}
+                        variant={hasActiveFilters ? 'default' : 'outline'}
                         onClick={() => {
                             setSearchTerm('');
                             setMaxPrice('');
@@ -110,8 +114,12 @@ export default function PropertiesPage() {
                 </div>
             ) : filteredProperties.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProperties.map((property) => (
-                        <PropertyCard key={property.id} property={property} />
+                    {filteredProperties.map((property, index) => (
+                        <PropertyCard
+                            key={property.id}
+                            property={property}
+                            priority={index < 3}
+                        />
                     ))}
                 </div>
             ) : (

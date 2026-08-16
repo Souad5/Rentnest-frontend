@@ -5,7 +5,12 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import StatusBadge from './StatusBadge';
 import { Property } from '@/types/api';
 
-export default function PropertyCard({ property }: { property: Property }) {
+interface PropertyCardProps {
+    property: Property;
+    priority?: boolean; // Optional prop to determine if the image should be prioritized
+}
+
+export default function PropertyCard({ property, priority }: PropertyCardProps) {
     const imageUrl = property.images?.[0] || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750';
     const isAvailable = property.isAvailable ?? true;
 
@@ -18,6 +23,7 @@ export default function PropertyCard({ property }: { property: Property }) {
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover"
+                    priority={priority}
                 />
                 <div className="absolute right-3 top-3">
                     <StatusBadge status={isAvailable ? 'AVAILABLE' : 'RENTED'} />
@@ -47,3 +53,7 @@ export default function PropertyCard({ property }: { property: Property }) {
         </Card>
     );
 }
+
+
+
+

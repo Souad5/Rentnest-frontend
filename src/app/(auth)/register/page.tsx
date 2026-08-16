@@ -2,11 +2,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+
 import { useAuth } from '@/providers/AuthProvider';
 import { ApiError } from '@/lib/api';
+import { AppButton } from '@/components/shared/AppButton';
+import { AppInput } from '@/components/shared/AppInput';
 
 export default function RegisterPage() {
     const { register } = useAuth();
+
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -20,12 +24,22 @@ export default function RegisterPage() {
         setSubmitting(true);
 
         try {
-            await register({ name, email, password, role });
+            await register({
+                name,
+                email,
+                password,
+                role,
+            });
         } catch (err) {
             if (err instanceof ApiError) {
-                setError(err.message || 'Registration failed. Please try again.');
+                setError(
+                    err.message ||
+                    'Registration failed. Please try again.'
+                );
             } else {
-                setError('An unexpected error occurred. Please try again.');
+                setError(
+                    'An unexpected error occurred. Please try again.'
+                );
             }
         } finally {
             setSubmitting(false);
@@ -35,11 +49,19 @@ export default function RegisterPage() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
             <div className="w-full max-w-md space-y-6 bg-card p-8 rounded-xl border border-border shadow-sm">
+
+                {/* Header */}
                 <div className="text-center space-y-2">
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Create your Account</h1>
-                    <p className="text-sm text-muted-foreground">Join RentNest as a Tenant or Landlord</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                        Create your Account
+                    </h1>
+
+                    <p className="text-sm text-muted-foreground">
+                        Join RentNest as a Tenant or Landlord
+                    </p>
                 </div>
 
+                {/* Error */}
                 {error && (
                     <div className="p-3 text-xs text-destructive-foreground bg-destructive/15 border border-destructive/20 rounded-md">
                         {error}
@@ -47,81 +69,121 @@ export default function RegisterPage() {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+
+                    {/* Account Type */}
                     <div className="space-y-1">
-                        <label className="text-xs font-medium text-foreground">Account Type</label>
+                        <label className="text-xs font-medium text-foreground">
+                            Account Type
+                        </label>
+
                         <div className="grid grid-cols-2 gap-2">
-                            <button
+                            <AppButton
                                 type="button"
                                 onClick={() => setRole('TENANT')}
-                                className={`py-2 text-xs font-semibold rounded-md border transition-colors ${role === 'TENANT'
-                                    ? 'bg-primary text-primary-foreground border-primary'
-                                    : 'bg-background text-muted-foreground border-border hover:bg-muted'
-                                    }`}
+                                className={
+                                    role === 'TENANT'
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-background text-muted-foreground border border-border hover:bg-muted'
+                                }
                             >
                                 Tenant
-                            </button>
-                            <button
+                            </AppButton>
+
+                            <AppButton
                                 type="button"
                                 onClick={() => setRole('LANDLORD')}
-                                className={`py-2 text-xs font-semibold rounded-md border transition-colors ${role === 'LANDLORD'
-                                    ? 'bg-primary text-primary-foreground border-primary'
-                                    : 'bg-background text-muted-foreground border-border hover:bg-muted'
-                                    }`}
+                                className={
+                                    role === 'LANDLORD'
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-background text-muted-foreground border border-border hover:bg-muted'
+                                }
                             >
                                 Landlord
-                            </button>
+                            </AppButton>
                         </div>
                     </div>
 
+                    {/* Full Name */}
                     <div className="space-y-1">
-                        <label className="text-xs font-medium text-foreground">Full Name</label>
-                        <input
+                        <label
+                            htmlFor="name"
+                            className="text-xs font-medium text-foreground"
+                        >
+                            Full Name
+                        </label>
+
+                        <AppInput
+                            id="name"
                             type="text"
                             required
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                             placeholder="John Doe"
                         />
                     </div>
 
+                    {/* Email */}
                     <div className="space-y-1">
-                        <label className="text-xs font-medium text-foreground">Email Address</label>
-                        <input
+                        <label
+                            htmlFor="email"
+                            className="text-xs font-medium text-foreground"
+                        >
+                            Email Address
+                        </label>
+
+                        <AppInput
+                            id="email"
                             type="email"
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                             placeholder="name@example.com"
                         />
                     </div>
 
+                    {/* Password */}
                     <div className="space-y-1">
-                        <label className="text-xs font-medium text-foreground">Password</label>
-                        <input
+                        <label
+                            htmlFor="password"
+                            className="text-xs font-medium text-foreground"
+                        >
+                            Password
+                        </label>
+
+                        <AppInput
+                            id="password"
                             type="password"
                             required
                             minLength={6}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                             placeholder="••••••••"
                         />
                     </div>
 
-                    <button
+                    {/* Submit */}
+                    <AppButton
                         type="submit"
                         disabled={submitting}
-                        className="w-full py-2.5 px-4 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
+                        className="w-full"
                     >
-                        {submitting ? 'Creating account...' : `Register as ${role === 'TENANT' ? 'Tenant' : 'Landlord'}`}
-                    </button>
+                        {submitting
+                            ? 'Creating account...'
+                            : `Register as ${role === 'TENANT'
+                                ? 'Tenant'
+                                : 'Landlord'
+                            }`}
+                    </AppButton>
                 </form>
 
+                {/* Login */}
                 <div className="text-center text-xs text-muted-foreground">
                     Already have an account?{' '}
-                    <Link href="/auth/login" className="text-primary underline font-medium">
+
+                    <Link
+                        href="/login"
+                        className="text-primary underline font-medium"
+                    >
                         Log in here
                     </Link>
                 </div>
