@@ -4,7 +4,7 @@ This document maps all frontend components and App Router pages to their corresp
 
 ## Base Configuration
 
-- **Base URL:** `process.env.NEXT_PUBLIC_API_URL` (e.g., `http://localhost:5000/api`)
+- **Base URL:** `process.env.NEXT_PUBLIC_API_URL` (e.g., `http://localhost:3000/api`)
 - **Authentication:** Bearer JWT token stored in `localStorage` or HttpOnly cookies, injected via Authorization header: `Authorization: Bearer <token>`
 
 ---
