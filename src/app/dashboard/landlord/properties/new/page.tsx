@@ -1,211 +1,193 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, PlusCircle, Building2, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ImagePlus } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function NewPropertyPage() {
+export default function CreatePropertyPage() {
     const router = useRouter();
+    const [loading, setLoading] = useState(false);
+    const [imageUrls, setImageUrls] = useState<string[]>(['']);
 
     const [formData, setFormData] = useState({
         title: '',
         location: '',
-        address: '',
         price: '',
-        bedrooms: '1',
-        bathrooms: '1',
-        sizeSqFt: '',
+        bedrooms: '',
+        bathrooms: '',
         description: '',
-        imageUrl: '',
-        categoryId: 'cat-apartment',
+        category: '',
     });
 
-    const handleChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-    ) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+    const handleImageUrlChange = (index: number, value: string) => {
+        const updated = [...imageUrls];
+        updated[index] = value;
+        setImageUrls(updated);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const addImageUrlField = () => setImageUrls([...imageUrls, '']);
+    const removeImageUrlField = (index: number) =>
+        setImageUrls(imageUrls.filter((_, i) => i !== index));
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Insert backend API POST call here (e.g. POST /api/properties)
-        router.push('/dashboard/landlord');
+        setLoading(true);
+
+        try {
+            const payload = {
+                ...formData,
+                price: Number(formData.price),
+                bedrooms: Number(formData.bedrooms),
+                bathrooms: Number(formData.bathrooms),
+                images: imageUrls.filter((url) => url.trim() !== ''),
+            };
+
+            // Call API: POST /api/landlord/properties
+            console.log('Posting Property Payload:', payload);
+
+            router.push('/dashboard/landlord');
+        } catch (err) {
+            console.error('Failed to create property', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <div className="space-y-6 py-4 max-w-4xl mx-auto">
-            {/* Page Header */}
-            <div className="flex items-center justify-between">
-                <Button asChild variant="ghost" size="sm" className="gap-2">
-                    <Link href="/dashboard/landlord">
-                        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-                    </Link>
-                </Button>
+        <div className="max-w-3xl mx-auto py-6 space-y-6">
+            <Button variant="ghost" asChild className="gap-2 text-muted-foreground">
+                <Link href="/dashboard/landlord">
+                    <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+                </Link>
+            </Button>
+
+            <div>
+                <h1 className="text-2xl font-bold tracking-tight">Create New Property Listing</h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                    Provide detailed specifications and high-quality image URLs for prospective tenants.
+                </p>
             </div>
 
-            <Card className="border-border">
-                <CardHeader>
-                    <CardTitle className="text-xl font-bold flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-primary" /> Create New Property Listing
-                    </CardTitle>
-                </CardHeader>
+            <form onSubmit={handleSubmit} className="space-y-6 bg-card border border-border p-6 rounded-2xl shadow-xs">
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium text-foreground">Property Title</label>
+                        <Input
+                            required
+                            placeholder="e.g. Modern Apartment in Downtown"
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            className="mt-1"
+                        />
+                    </div>
 
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Title */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Listing Title</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-sm font-medium text-foreground">Location / Address</label>
                             <Input
-                                name="title"
-                                value={formData.title}
-                                onChange={handleChange}
-                                placeholder="e.g. Modern Luxury Apartment Downtown"
                                 required
+                                placeholder="e.g. Dhaka, Bangladesh"
+                                value={formData.location}
+                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                className="mt-1"
                             />
                         </div>
-
-                        {/* Location & Address */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">City / Neighborhood</label>
-                                <Input
-                                    name="location"
-                                    value={formData.location}
-                                    onChange={handleChange}
-                                    placeholder="e.g. Downtown, San Francisco"
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Full Address</label>
-                                <Input
-                                    name="address"
-                                    value={formData.address}
-                                    onChange={handleChange}
-                                    placeholder="e.g. 124 Financial District Blvd"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        {/* Price, Bedrooms, Bathrooms, SqFt */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Monthly Rent ($)</label>
-                                <Input
-                                    type="number"
-                                    name="price"
-                                    value={formData.price}
-                                    onChange={handleChange}
-                                    placeholder="2500"
-                                    min={0}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Bedrooms</label>
-                                <Input
-                                    type="number"
-                                    name="bedrooms"
-                                    value={formData.bedrooms}
-                                    onChange={handleChange}
-                                    min={0}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Bathrooms</label>
-                                <Input
-                                    type="number"
-                                    name="bathrooms"
-                                    value={formData.bathrooms}
-                                    onChange={handleChange}
-                                    min={0}
-                                    step="0.5"
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Area (Sq Ft)</label>
-                                <Input
-                                    type="number"
-                                    name="sizeSqFt"
-                                    value={formData.sizeSqFt}
-                                    onChange={handleChange}
-                                    placeholder="1100"
-                                    min={0}
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        {/* Category & Cover Image URL */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Property Type</label>
-                                <select
-                                    name="categoryId"
-                                    value={formData.categoryId}
-                                    onChange={handleChange}
-                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                >
-                                    <option value="cat-apartment" className="bg-background text-foreground">Apartment</option>
-                                    <option value="cat-house" className="bg-background text-foreground">Single Family House</option>
-                                    <option value="cat-studio" className="bg-background text-foreground">Studio</option>
-                                    <option value="cat-townhouse" className="bg-background text-foreground">Townhouse</option>
-                                    <option value="cat-loft" className="bg-background text-foreground">Loft</option>
-                                </select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Cover Image URL</label>
-                                <div className="relative">
-                                    <Upload className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        name="imageUrl"
-                                        value={formData.imageUrl}
-                                        onChange={handleChange}
-                                        placeholder="https://..."
-                                        className="pl-9"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Description */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Description</label>
-                            <textarea
-                                name="description"
-                                value={formData.description}
-                                onChange={handleChange}
-                                rows={4}
-                                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                placeholder="Provide details about the property, amenities, nearby attractions, lease terms..."
+                        <div>
+                            <label className="text-sm font-medium text-foreground">Monthly Rent ($/mo)</label>
+                            <Input
+                                type="number"
                                 required
+                                placeholder="e.g. 1200"
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                className="mt-1"
                             />
                         </div>
+                    </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-                            <Button asChild variant="outline">
-                                <Link href="/dashboard/landlord">Cancel</Link>
-                            </Button>
-                            <Button type="submit" className="gap-2">
-                                <PlusCircle className="h-4 w-4" /> Publish Listing
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-sm font-medium text-foreground">Bedrooms</label>
+                            <Input
+                                type="number"
+                                required
+                                placeholder="e.g. 2"
+                                value={formData.bedrooms}
+                                onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
+                                className="mt-1"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-foreground">Bathrooms</label>
+                            <Input
+                                type="number"
+                                required
+                                placeholder="e.g. 2"
+                                value={formData.bathrooms}
+                                onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
+                                className="mt-1"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium text-foreground">Description</label>
+                        <textarea
+                            required
+                            rows={4}
+                            placeholder="Describe amenities, neighborhood, lease terms..."
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            className="mt-1 w-full rounded-md border border-input bg-background p-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                    </div>
+
+                    {/* Image URLs UI */}
+                    <div className="space-y-3 pt-2">
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                                <ImagePlus className="h-4 w-4" /> Image URLs
+                            </label>
+                            <Button type="button" variant="outline" size="sm" onClick={addImageUrlField} className="gap-1">
+                                <Plus className="h-3 w-3" /> Add Image Field
                             </Button>
                         </div>
-                    </form>
-                </CardContent>
-            </Card>
+                        {imageUrls.map((url, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                                <Input
+                                    type="url"
+                                    placeholder="https://images.unsplash.com/photo-..."
+                                    value={url}
+                                    onChange={(e) => handleImageUrlChange(idx, e.target.value)}
+                                />
+                                {imageUrls.length > 1 && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => removeImageUrlField(idx)}
+                                        className="text-destructive"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                    <Button type="button" variant="outline" onClick={() => router.back()}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={loading}>
+                        {loading ? 'Creating...' : 'Publish Listing'}
+                    </Button>
+                </div>
+            </form>
         </div>
     );
 }

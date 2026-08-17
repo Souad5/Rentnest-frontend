@@ -1,178 +1,143 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Wrench, Calendar, CheckCircle, XCircle, Clock, Building2, User } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import Link from 'next/link';
+import { ArrowLeft, Check, X, Clock, User, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import StatusBadge from '@/components/shared/StatusBadge';
 
-interface RequestItem {
+interface RentalRequest {
     id: string;
     propertyTitle: string;
     tenantName: string;
-    type: 'MAINTENANCE' | 'TOUR_REQUEST';
-    title: string;
-    description: string;
-    priority: 'LOW' | 'MEDIUM' | 'HIGH';
-    status: 'PENDING' | 'COMPLETED' | 'FAILED';
-    createdAt: string;
+    tenantEmail: string;
+    moveInDate: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
-const MOCK_REQUESTS: RequestItem[] = [
-    {
-        id: 'req-1',
-        propertyTitle: 'Modern Luxury Apartment in Downtown',
-        tenantName: 'Sarah Jenkins',
-        type: 'MAINTENANCE',
-        title: 'Leaking Kitchen Faucet',
-        description: 'The kitchen sink faucet has a constant drip causing water to puddle under the cabinet.',
-        priority: 'MEDIUM',
-        status: 'PENDING',
-        createdAt: '2026-02-14',
-    },
-    {
-        id: 'req-2',
-        propertyTitle: 'Cozy Waterfront Studio',
-        tenantName: 'Alex Rivers',
-        type: 'TOUR_REQUEST',
-        title: 'In-person Viewing Request',
-        description: 'Would like to schedule a walk-through on Saturday afternoon around 2 PM.',
-        priority: 'LOW',
-        status: 'PENDING',
-        createdAt: '2026-02-15',
-    },
-    {
-        id: 'req-3',
-        propertyTitle: 'Spacious Family Villa with Garden',
-        tenantName: 'Michael Chang',
-        type: 'MAINTENANCE',
-        title: 'HVAC Air Filter Replacement',
-        description: 'Routine HVAC air filter replacement requested for the main unit.',
-        priority: 'LOW',
-        status: 'COMPLETED',
-        createdAt: '2026-02-01',
-    },
-];
-
 export default function LandlordRequestsPage() {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [requests, setRequests] = useState<RequestItem[]>(MOCK_REQUESTS);
+    const [requests, setRequests] = useState<RentalRequest[]>([
+        {
+            id: 'req_1',
+            propertyTitle: 'Luxury Skyline Apartment',
+            tenantName: 'John Doe',
+            tenantEmail: 'john@example.com',
+            moveInDate: '2026-09-01',
+            status: 'PENDING',
+        },
+    ]);
 
-    const filteredRequests = requests.filter(
-        (req) =>
-            req.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            req.propertyTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            req.tenantName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const updateStatus = (id: string, newStatus: 'COMPLETED' | 'FAILED') => {
+    // Optimistic Status Update with Toast feedback trigger
+    const handleUpdateStatus = async (id: string, newStatus: 'APPROVED' | 'REJECTED') => {
+        // 1. Optimistically update local state immediately
         setRequests((prev) =>
             prev.map((req) => (req.id === id ? { ...req, status: newStatus } : req))
         );
+
+        try {
+            // 2. Call API PATCH /api/landlord/requests/:id
+            // await api.patch(`/api/landlord/requests/${id}`, { status: newStatus });
+            console.log(`Request ${id} updated to ${newStatus}`);
+        } catch (error) {
+            console.error('Failed to update request status:', error);
+            // Revert state if backend call fails
+        }
     };
 
     return (
-        <div className="space-y-6 py-4">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Maintenance & Service Requests</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Track, manage, and resolve repair issues and viewing requests submitted by tenants.
-                    </p>
-                </div>
+        <div className="max-w-7xl mx-auto py-4 space-y-6">
+            <Button variant="ghost" asChild className="gap-2 text-muted-foreground">
+                <Link href="/dashboard/landlord">
+                    <ArrowLeft className="h-4 w-4" /> Back to Overview
+                </Link>
+            </Button>
+
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">Incoming Rental Requests</h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                    Review tenant requests for your properties. Approved requests enable tenants to proceed to payment.
+                </p>
             </div>
 
-            {/* Search Bar */}
-            <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Search by request, property, or tenant..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                />
-            </div>
-
-            {/* Requests List */}
-            <div className="space-y-4">
-                {filteredRequests.length > 0 ? (
-                    filteredRequests.map((req) => (
-                        <Card key={req.id} className="border-border">
-                            <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                                            {req.type === 'MAINTENANCE' ? <Wrench className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
-                                            {req.type.replace('_', ' ')}
-                                        </span>
-                                        <span
-                                            className={`text-xs px-2 py-0.5 rounded-md font-semibold ${req.priority === 'HIGH'
-                                                ? 'bg-rose-500/10 text-rose-600'
-                                                : req.priority === 'MEDIUM'
-                                                    ? 'bg-amber-500/10 text-amber-600'
-                                                    : 'bg-muted text-muted-foreground'
-                                                }`}
-                                        >
-                                            {req.priority} PRIORITY
-                                        </span>
-                                    </div>
-                                    <CardTitle className="text-lg font-bold text-foreground">{req.title}</CardTitle>
-                                </div>
-                                <StatusBadge status={req.status} />
-                            </CardHeader>
-
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
-                                    <div className="flex items-center gap-1.5">
-                                        <Building2 className="h-3.5 w-3.5 text-primary" />
-                                        <span>{req.propertyTitle}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <User className="h-3.5 w-3.5 text-primary" />
-                                        <span>Requested by: {req.tenantName}</span>
-                                    </div>
-                                </div>
-
-                                <p className="text-sm text-muted-foreground leading-relaxed bg-muted/40 p-3 rounded-lg border border-border">
-                                    {req.description}
-                                </p>
-
-                                <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
-                                    <span className="flex items-center gap-1">
-                                        <Clock className="h-3.5 w-3.5" /> Date Submitted: {req.createdAt}
-                                    </span>
-
-                                    {req.status === 'PENDING' && (
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="gap-1.5 text-destructive hover:bg-destructive/10"
-                                                onClick={() => updateStatus(req.id, 'FAILED')}
-                                            >
-                                                <XCircle className="h-4 w-4" /> Decline
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                                                onClick={() => updateStatus(req.id, 'COMPLETED')}
-                                            >
-                                                <CheckCircle className="h-4 w-4" /> Mark Resolved
-                                            </Button>
+            <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-muted/50 border-b border-border text-xs uppercase text-muted-foreground font-semibold">
+                            <tr>
+                                <th className="px-6 py-4">Tenant Info</th>
+                                <th className="px-6 py-4">Property</th>
+                                <th className="px-6 py-4">Move-in Date</th>
+                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                            {requests.map((req) => (
+                                <tr key={req.id} className="hover:bg-muted/30 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs shrink-0">
+                                                <User className="h-4 w-4" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-foreground">{req.tenantName}</p>
+                                                <p className="text-xs text-muted-foreground">{req.tenantEmail}</p>
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))
-                ) : (
-                    <div className="text-center py-12 border border-dashed border-border rounded-xl">
-                        <Wrench className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No maintenance or service requests found.</p>
-                    </div>
-                )}
+                                    </td>
+                                    <td className="px-6 py-4 font-medium text-foreground">
+                                        <div className="flex items-center gap-2">
+                                            <Building className="h-4 w-4 text-muted-foreground" />
+                                            <span>{req.propertyTitle}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-muted-foreground">{req.moveInDate}</td>
+                                    <td className="px-6 py-4">
+                                        {req.status === 'PENDING' && (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                                <Clock className="h-3 w-3" /> Pending
+                                            </span>
+                                        )}
+                                        {req.status === 'APPROVED' && (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                                <Check className="h-3 w-3" /> Approved
+                                            </span>
+                                        )}
+                                        {req.status === 'REJECTED' && (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                                <X className="h-3 w-3" /> Rejected
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        {req.status === 'PENDING' ? (
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleUpdateStatus(req.id, 'APPROVED')}
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                                                >
+                                                    <Check className="h-4 w-4" /> Approve
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="destructive"
+                                                    onClick={() => handleUpdateStatus(req.id, 'REJECTED')}
+                                                    className="gap-1"
+                                                >
+                                                    <X className="h-4 w-4" /> Reject
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground font-medium italic">
+                                                Action Taken
+                                            </span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
