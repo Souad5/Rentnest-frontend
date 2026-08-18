@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Building2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MOCK_PROPERTIES } from '@/constants/mockProperties';
+import { AppInput } from '@/components/shared/AppInput';
 
 interface EditPropertyPageProps {
     params: Promise<{ id: string }>;
@@ -26,7 +26,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
         bathrooms: 1,
         sizeSqFt: 500,
         description: '',
-        isAvailable: true,
+        isAvailable: 'true',
         imageUrl: '',
     });
 
@@ -45,7 +45,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                 bathrooms: property.bathrooms ?? 1,
                 sizeSqFt: property.sizeSqFt ?? 500,
                 description: property.description,
-                isAvailable: property.isAvailable ?? true,
+                isAvailable: property.isAvailable !== false ? 'true' : 'false',
                 imageUrl: property.images?.[0] || '',
             });
         }
@@ -99,7 +99,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                         {/* Title */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Listing Title</label>
-                            <Input
+                            <AppInput
                                 name="title"
                                 value={formData.title}
                                 onChange={handleChange}
@@ -112,7 +112,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">City / Neighborhood</label>
-                                <Input
+                                <AppInput
                                     name="location"
                                     value={formData.location}
                                     onChange={handleChange}
@@ -122,7 +122,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Full Address</label>
-                                <Input
+                                <AppInput
                                     name="address"
                                     value={formData.address}
                                     onChange={handleChange}
@@ -136,7 +136,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Monthly Rent ($)</label>
-                                <Input
+                                <AppInput
                                     type="number"
                                     name="price"
                                     value={formData.price}
@@ -147,7 +147,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Bedrooms</label>
-                                <Input
+                                <AppInput
                                     type="number"
                                     name="bedrooms"
                                     value={formData.bedrooms}
@@ -158,7 +158,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Bathrooms</label>
-                                <Input
+                                <AppInput
                                     type="number"
                                     name="bathrooms"
                                     value={formData.bathrooms}
@@ -170,7 +170,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Area (Sq Ft)</label>
-                                <Input
+                                <AppInput
                                     type="number"
                                     name="sizeSqFt"
                                     value={formData.sizeSqFt}
@@ -181,28 +181,26 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                             </div>
                         </div>
 
-                        {/* Availability & Main Image URL */}
+                        {/* Availability & Cover Image */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Status</label>
                                 <select
                                     name="isAvailable"
-                                    value={formData.isAvailable ? 'true' : 'false'}
-                                    onChange={(e) =>
-                                        setFormData((prev) => ({ ...prev, isAvailable: e.target.value === 'true' }))
-                                    }
-                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    value={formData.isAvailable}
+                                    onChange={handleChange}
+                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                                 >
-                                    <option value="true" className="bg-background text-foreground">Available</option>
-                                    <option value="false" className="bg-background text-foreground">Rented / Unavailable</option>
+                                    <option value="true">Available</option>
+                                    <option value="false">Rented / Unavailable</option>
                                 </select>
                             </div>
 
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Cover Image URL</label>
                                 <div className="relative">
-                                    <Upload className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <Input
+                                    <Upload className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10" />
+                                    <AppInput
                                         name="imageUrl"
                                         value={formData.imageUrl}
                                         onChange={handleChange}
@@ -221,7 +219,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                                 value={formData.description}
                                 onChange={handleChange}
                                 rows={4}
-                                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                                 placeholder="Write a detailed description of the property..."
                                 required
                             />

@@ -39,10 +39,12 @@ export default function RootLayout({
             <Navbar />
 
             {/* Page Content */}
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 bg-[#f4f3f0]">{children}</main>
 
             {/* Footer */}
-            <Footer />
+            <div className='bg-[#f4f3f0]'>
+              <Footer />
+            </div>
           </QueryProvider>
         </AuthProvider>
       </body>

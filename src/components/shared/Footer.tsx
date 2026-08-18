@@ -18,7 +18,7 @@ export default function Footer() {
     ];
 
     return (
-        <footer className="bg-[#181818] text-white rounded-t-[32px] mt-16 pt-12 pb-8">
+        <footer className="bg-[#181818] text-white rounded-t-[32px] pt-12 pb-8">
             <div className="container px-4 sm:px-6 max-w-7xl mx-auto space-y-12">
                 {/* Top Section: Brand Info, Navigation Columns & Newsletter */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
