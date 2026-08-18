@@ -1,79 +1,76 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import {
     Building2,
     Shield,
-    User,
+    User as UserIcon,
     ArrowUpRight,
     Sparkles,
     Home,
-    CheckCircle2,
     PlusCircle,
     FileCheck2,
     Users,
     Settings,
     TrendingUp,
-    LayoutDashboard,
     Clock,
-    ArrowRight,
     Activity,
     CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { useAuth, UserRole } from '@/providers/AuthProvider';
 
 export default function DashboardPage() {
-    const [role, setRole] = useState<'TENANT' | 'LANDLORD' | 'ADMIN'>('LANDLORD');
+    const { user } = useAuth();
+    const role: UserRole = user?.role || 'TENANT';
 
     const roleMeta = {
         TENANT: {
             title: 'Tenant Hub',
-            subtitle: 'Rent requests, receipts, and saved properties',
-            badge: 'Tenant View',
+            subtitle: 'Track your rental applications, payment history, and saved properties.',
+            badge: 'Tenant Workspace',
             href: '/dashboard/tenant',
-            icon: User,
+            icon: UserIcon,
             stats: [
-                { label: 'Active Rental Requests', value: '2', sub: '1 Pending Landlord Approval', status: 'PENDING' },
-                { label: 'Saved Favorites', value: '5', sub: 'Updated 2 hours ago', status: 'ACTIVE' },
+                { label: 'Active Rental Requests', value: '2', sub: '1 Pending Approval', status: 'PENDING' },
+                { label: 'Saved Favorites', value: '5', sub: 'Updated recently', status: 'ACTIVE' },
                 { label: 'Total Paid Rent', value: '$2,400', sub: '2 Successful Receipts', status: 'COMPLETED' },
             ],
             quickActions: [
                 { label: 'Browse Properties', href: '/properties', icon: Home },
-                { label: 'View Request History', href: '/dashboard/tenant', icon: FileCheck2 },
+                { label: 'My Rental Requests', href: '/dashboard/tenant', icon: FileCheck2 },
             ],
         },
         LANDLORD: {
             title: 'Landlord Command',
-            subtitle: 'Listings, availability, and tenant request approvals',
-            badge: 'Landlord View',
+            subtitle: 'Manage property listings, toggle availability, and review tenant applications.',
+            badge: 'Landlord Workspace',
             href: '/dashboard/landlord',
             icon: Building2,
             stats: [
-                { label: 'Total Properties Listed', value: '4', sub: '3 Available, 1 Occupied', status: 'ACTIVE' },
-                { label: 'Incoming Requests', value: '3', sub: 'Requires Landlord Review', status: 'PENDING' },
-                { label: 'Monthly Revenue', value: '$4,800', sub: '+12% from last month', status: 'COMPLETED' },
+                { label: 'Properties Listed', value: '3', sub: 'Filtered by Landlord ID', status: 'ACTIVE' },
+                { label: 'Incoming Requests', value: '3', sub: 'Requires Review', status: 'PENDING' },
+                { label: 'Monthly Earnings', value: '$4,800', sub: '+12% from last month', status: 'COMPLETED' },
             ],
             quickActions: [
-                { label: 'Create Listing', href: '/dashboard/landlord/properties/new', icon: PlusCircle },
+                { label: 'Add Property Listing', href: '/dashboard/landlord/properties/new', icon: PlusCircle },
                 { label: 'Manage Requests', href: '/dashboard/landlord/requests', icon: FileCheck2 },
             ],
         },
         ADMIN: {
-            title: 'Admin Control Center',
-            subtitle: 'User moderation, platform health, and auditing',
-            badge: 'Admin View',
+            title: 'Admin Moderation Center',
+            subtitle: 'Oversee system metrics, moderate user accounts, and review pending listings.',
+            badge: 'Admin Workspace',
             href: '/dashboard/admin',
             icon: Shield,
             stats: [
-                { label: 'Total Platform Users', value: '1,248', sub: '840 Tenants, 408 Landlords', status: 'ACTIVE' },
-                { label: 'Properties for Review', value: '12', sub: 'Requires Moderation', status: 'PENDING' },
-                { label: 'Platform Uptime', value: '99.9%', sub: 'All API Routes Healthy', status: 'COMPLETED' },
+                { label: 'Platform Users', value: '1,248', sub: 'Active Tenants & Landlords', status: 'ACTIVE' },
+                { label: 'Properties for Review', value: '12', sub: 'Moderation Queue', status: 'PENDING' },
+                { label: 'Platform Uptime', value: '99.9%', sub: 'API Services Healthy', status: 'COMPLETED' },
             ],
             quickActions: [
-                { label: 'User Directory', href: '/dashboard/admin', icon: Users },
+                { label: 'User Directory', href: '/dashboard/admin/users', icon: Users },
                 { label: 'System Settings', href: '/dashboard/admin', icon: Settings },
             ],
         },
@@ -83,7 +80,7 @@ export default function DashboardPage() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-12">
-            {/* SaaS Hero Banner */}
+            {/* SaaS Banner */}
             <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-linear-to-br from-card via-card to-primary/5 p-6 sm:p-8 shadow-xs">
                 <div className="absolute top-0 right-0 -mr-20 -mt-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
 
@@ -91,54 +88,29 @@ export default function DashboardPage() {
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="gap-1 px-3 py-1 text-xs font-semibold bg-primary/10 text-primary border-primary/20 rounded-full">
-                                <Sparkles className="h-3.5 w-3.5" /> RentNest SaaS Engine
+                                <Sparkles className="h-3.5 w-3.5" /> RentNest Portal
                             </Badge>
                             <Badge variant="outline" className="text-xs text-muted-foreground rounded-full">
-                                Interactive Portal
+                                {role} Session
                             </Badge>
                         </div>
                         <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">
-                            Rental Marketplace Control Hub
+                            Welcome back, {user?.name || 'User'}!
                         </h1>
                         <p className="text-sm text-muted-foreground max-w-xl leading-relaxed">
-                            Seamlessly switch between tenant booking flows, landlord property management, and administrative moderation platforms.
+                            {activeMeta.subtitle}
                         </p>
                     </div>
 
-                    {/* SaaS Role Toggle Pills */}
-                    <div className="flex items-center bg-muted/80 backdrop-blur-md p-1.5 rounded-2xl border border-border/80 self-start lg:self-auto shadow-inner">
-                        <button
-                            onClick={() => setRole('TENANT')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${role === 'TENANT'
-                                ? 'bg-background text-foreground shadow-xs border border-border/60'
-                                : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            <User className="h-4 w-4" /> Tenant
-                        </button>
-                        <button
-                            onClick={() => setRole('LANDLORD')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${role === 'LANDLORD'
-                                ? 'bg-background text-foreground shadow-xs border border-border/60'
-                                : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            <Building2 className="h-4 w-4" /> Landlord
-                        </button>
-                        <button
-                            onClick={() => setRole('ADMIN')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${role === 'ADMIN'
-                                ? 'bg-background text-foreground shadow-xs border border-border/60'
-                                : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            <Shield className="h-4 w-4" /> Admin
-                        </button>
-                    </div>
+                    <Button asChild className="gap-2 rounded-xl shadow-xs shrink-0 self-start lg:self-auto">
+                        <Link href={activeMeta.href}>
+                            Open {role.charAt(0) + role.slice(1).toLowerCase()} Portal <ArrowUpRight className="h-4 w-4" />
+                        </Link>
+                    </Button>
                 </div>
             </div>
 
-            {/* Active Role Dashboard Display */}
+            {/* Active Role Card */}
             <div className="rounded-3xl border border-primary/20 bg-primary/5 p-6 sm:p-8 space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-primary/10 pb-6">
                     <div className="flex items-center gap-4">
@@ -150,18 +122,11 @@ export default function DashboardPage() {
                                 <h2 className="text-2xl font-bold text-foreground tracking-tight">{activeMeta.title}</h2>
                                 <Badge className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-md">{activeMeta.badge}</Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">{activeMeta.subtitle}</p>
                         </div>
                     </div>
-
-                    <Button asChild className="gap-2 rounded-xl shadow-xs shrink-0">
-                        <Link href={activeMeta.href}>
-                            Launch Portal <ArrowUpRight className="h-4 w-4" />
-                        </Link>
-                    </Button>
                 </div>
 
-                {/* Dynamic Metric Cards */}
+                {/* Metric Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {activeMeta.stats.map((stat, idx) => (
                         <div key={idx} className="bg-card border border-border/80 rounded-2xl p-5 shadow-2xs space-y-2">
@@ -185,7 +150,7 @@ export default function DashboardPage() {
                     ))}
                 </div>
 
-                {/* Quick Actions Shortcuts */}
+                {/* Quick Actions */}
                 <div className="flex flex-wrap items-center gap-3 pt-2">
                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quick Actions:</span>
                     {activeMeta.quickActions.map((action, idx) => {
@@ -201,126 +166,12 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Role Selection Grid Cards */}
-            <div className="space-y-4">
-                <div>
-                    <h3 className="text-xl font-bold text-foreground tracking-tight flex items-center gap-2">
-                        <LayoutDashboard className="h-5 w-5 text-primary" /> Platform Role Portals
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Explore each role&apos;s dedicated portal view and options.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Tenant Portal Card */}
-                    <Card
-                        className={`relative overflow-hidden rounded-3xl border transition-all duration-300 ${role === 'TENANT' ? 'border-primary ring-2 ring-primary/20 bg-card shadow-md' : 'border-border/80 bg-card/60 hover:bg-card'
-                            }`}
-                    >
-                        <CardContent className="p-6 space-y-5">
-                            <div className="flex items-center justify-between">
-                                <div className="h-11 w-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                                    <User className="h-5 w-5" />
-                                </div>
-                                {role === 'TENANT' ? (
-                                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 gap-1 text-[10px]">
-                                        <CheckCircle2 className="h-3 w-3" /> Active Role
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                                        Tenant
-                                    </Badge>
-                                )}
-                            </div>
-                            <div>
-                                <h4 className="text-lg font-bold text-foreground">Tenant Portal</h4>
-                                <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                                    Public browsing, rental requests submission, Stripe/SSLCommerz payment flows, and property reviews.
-                                </p>
-                            </div>
-                            <Button asChild variant={role === 'TENANT' ? 'default' : 'outline'} className="w-full gap-2 rounded-xl text-xs font-semibold" size="sm">
-                                <Link href="/dashboard/tenant">
-                                    Open Tenant Portal <ArrowRight className="h-3.5 w-3.5" />
-                                </Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
-
-                    {/* Landlord Portal Card */}
-                    <Card
-                        className={`relative overflow-hidden rounded-3xl border transition-all duration-300 ${role === 'LANDLORD' ? 'border-primary ring-2 ring-primary/20 bg-card shadow-md' : 'border-border/80 bg-card/60 hover:bg-card'
-                            }`}
-                    >
-                        <CardContent className="p-6 space-y-5">
-                            <div className="flex items-center justify-between">
-                                <div className="h-11 w-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                                    <Building2 className="h-5 w-5" />
-                                </div>
-                                {role === 'LANDLORD' ? (
-                                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 gap-1 text-[10px]">
-                                        <CheckCircle2 className="h-3 w-3" /> Active Role
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                                        Landlord
-                                    </Badge>
-                                )}
-                            </div>
-                            <div>
-                                <h4 className="text-lg font-bold text-foreground">Landlord Workspace</h4>
-                                <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                                    Property CRUD forms with image URL inputs, availability toggles, and incoming request approval/rejection controls.
-                                </p>
-                            </div>
-                            <Button asChild variant={role === 'LANDLORD' ? 'default' : 'outline'} className="w-full gap-2 rounded-xl text-xs font-semibold" size="sm">
-                                <Link href="/dashboard/landlord">
-                                    Open Landlord Workspace <ArrowRight className="h-3.5 w-3.5" />
-                                </Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
-
-                    {/* Admin Portal Card */}
-                    <Card
-                        className={`relative overflow-hidden rounded-3xl border transition-all duration-300 ${role === 'ADMIN' ? 'border-primary ring-2 ring-primary/20 bg-card shadow-md' : 'border-border/80 bg-card/60 hover:bg-card'
-                            }`}
-                    >
-                        <CardContent className="p-6 space-y-5">
-                            <div className="flex items-center justify-between">
-                                <div className="h-11 w-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                                    <Shield className="h-5 w-5" />
-                                </div>
-                                {role === 'ADMIN' ? (
-                                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 gap-1 text-[10px]">
-                                        <CheckCircle2 className="h-3 w-3" /> Active Role
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                                        Admin
-                                    </Badge>
-                                )}
-                            </div>
-                            <div>
-                                <h4 className="text-lg font-bold text-foreground">Admin Command Center</h4>
-                                <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                                    Platform health overview metrics, user management tables with ban/unban controls, and content moderation.
-                                </p>
-                            </div>
-                            <Button asChild variant={role === 'ADMIN' ? 'default' : 'outline'} className="w-full gap-2 rounded-xl text-xs font-semibold" size="sm">
-                                <Link href="/dashboard/admin">
-                                    Open Admin Center <ArrowRight className="h-3.5 w-3.5" />
-                                </Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-
-            {/* Activity Timeline Section */}
+            {/* Platform Activity Feed */}
             <div className="rounded-3xl border border-border/80 bg-card p-6 sm:p-8 space-y-4 shadow-2xs">
                 <div className="flex items-center justify-between border-b border-border/60 pb-4">
                     <div className="flex items-center gap-2">
                         <Activity className="h-5 w-5 text-primary" />
-                        <h3 className="text-lg font-bold text-foreground tracking-tight">Recent Platform Activity</h3>
+                        <h3 className="text-lg font-bold text-foreground tracking-tight">Recent Activity</h3>
                     </div>
                     <Badge variant="outline" className="text-[10px] text-muted-foreground">Live Feed</Badge>
                 </div>
@@ -335,7 +186,7 @@ export default function DashboardPage() {
                                 <p className="text-xs font-semibold text-foreground">Rental Request Submitted</p>
                                 <span className="text-[10px] text-muted-foreground">10m ago</span>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">Tenant John Doe submitted a request for &quot;Skyline Luxury Apartment&quot;.</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">A tenant requested a viewing for your listed apartment.</p>
                         </div>
                     </div>
 
@@ -345,10 +196,10 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                                <p className="text-xs font-semibold text-foreground">Payment Received</p>
+                                <p className="text-xs font-semibold text-foreground">Payment Processed</p>
                                 <span className="text-[10px] text-muted-foreground">1h ago</span>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">Payment of $1,200 completed via Stripe Checkout for Request #REQ-8821.</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Rent payment confirmed and receipt issued.</p>
                         </div>
                     </div>
                 </div>

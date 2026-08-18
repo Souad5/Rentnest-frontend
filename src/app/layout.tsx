@@ -1,10 +1,9 @@
+// src/app/layout.tsx
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import QueryProvider from '@/providers/QueryProvider';
 import './globals.css';
-import Navbar from '@/components/shared/Navbar';
 import { AuthProvider } from '@/providers/AuthProvider';
-import Footer from '@/components/shared/Footer';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -19,9 +18,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="en"
@@ -34,18 +31,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>
-          <QueryProvider>
-            {/* Main Navigation */}
-            <Navbar />
-
-            {/* Page Content */}
-            <main className="flex-1 bg-[#f4f3f0]">{children}</main>
-
-            {/* Footer */}
-            <div className='bg-[#f4f3f0]'>
-              <Footer />
-            </div>
-          </QueryProvider>
+          <QueryProvider>{children}</QueryProvider>
         </AuthProvider>
       </body>
     </html>
