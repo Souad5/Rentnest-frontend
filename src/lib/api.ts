@@ -196,27 +196,70 @@ export const reviewsApi = {
     }),
 };
 
+// Export shared interfaces for Admin features
+export interface ApiUser {
+  id: string;
+  name: string;
+  email: string;
+  role: "TENANT" | "LANDLORD" | "ADMIN";
+  isBanned: boolean;
+  createdAt: string;
+  _count?: {
+    properties: number;
+    rentalRequests: number;
+  };
+}
+
+export interface ApiProperty {
+  id: string;
+  title: string;
+  description: string;
+  address: string;
+  location: string;
+  price: number;
+  isAvailable: boolean;
+  landlordId: string;
+  categoryId: string;
+  createdAt: string;
+  updatedAt: string;
+  category?: {
+    id: string;
+    name: string;
+  };
+  landlord?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  _count?: {
+    rentalRequests: number;
+    reviews: number;
+  };
+}
+
 // ==========================================
 // 7. ADMIN API
 // ==========================================
 export const adminApi = {
-  getUsers: (page = 1, limit = 10) =>
-    fetcher<{ users: Array<Record<string, unknown>>; total: number }>(
-      `/admin/users?page=${page}&limit=${limit}`,
+  // Fetch all users
+  getUsers: () =>
+    fetcher<{ success: boolean; message: string; data: ApiUser[] }>(
+      "/admin/users",
     ),
 
-  updateUserStatus: (userId: string, isBanned: boolean) =>
-    fetcher<Record<string, unknown>>(`/admin/users/${userId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ isBanned }),
-    }),
+  // Toggle Ban status (PATCH) - sends JSON body to avoid validation errors
+  toggleBanUser: (userId: string, isBanned?: boolean) =>
+    fetcher<{ success: boolean; message: string; data: ApiUser }>(
+      `/admin/users/${userId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(isBanned !== undefined ? { isBanned } : {}),
+      },
+    ),
 
-  getAllProperties: () =>
-    fetcher<Array<Record<string, unknown>>>("/admin/properties"),
-
-  getAllRentals: () =>
-    fetcher<Array<Record<string, unknown>>>("/admin/rentals"),
-
-  getCategoryById: (id: string) =>
-    fetcher<Record<string, unknown>>(`/admin/categories/${id}`),
+  // Fetch all properties globally
+  getProperties: () =>
+    fetcher<{ success: boolean; message: string; data: ApiProperty[] }>(
+      "/admin/properties",
+    ),
 };

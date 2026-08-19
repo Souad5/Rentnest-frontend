@@ -1,60 +1,59 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, UserCheck, UserX, Mail, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, UserCheck, UserX, Mail, Calendar, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import StatusBadge from '@/components/shared/StatusBadge';
-
-interface UserItem {
-    id: string;
-    name: string;
-    email: string;
-    role: 'TENANT' | 'LANDLORD' | 'ADMIN';
-    status: 'ACTIVE' | 'SUSPENDED';
-    joinedAt: string;
-}
-
-const MOCK_USERS: UserItem[] = [
-    {
-        id: 'user-1',
-        name: 'Sarah Jenkins',
-        email: 'sarah.j@example.com',
-        role: 'TENANT',
-        status: 'ACTIVE',
-        joinedAt: '2026-01-10',
-    },
-    {
-        id: 'user-2',
-        name: 'Marcus Vance',
-        email: 'marcus.vance@example.com',
-        role: 'LANDLORD',
-        status: 'ACTIVE',
-        joinedAt: '2025-11-22',
-    },
-    {
-        id: 'user-3',
-        name: 'Elena Rostova',
-        email: 'elena.r@example.com',
-        role: 'ADMIN',
-        status: 'ACTIVE',
-        joinedAt: '2025-08-15',
-    },
-    {
-        id: 'user-4',
-        name: 'David Miller',
-        email: 'david.m@example.com',
-        role: 'TENANT',
-        status: 'SUSPENDED',
-        joinedAt: '2026-02-04',
-    },
-];
+import { Badge } from '@/components/ui/badge';
+import { adminApi, ApiUser } from '@/lib/api';
+import { AppButton } from '@/components/shared/AppButton';
 
 export default function AdminUsersPage() {
     const [searchTerm, setSearchTerm] = useState('');
-    const [users, setUsers] = useState<UserItem[]>(MOCK_USERS);
+    const [users, setUsers] = useState<ApiUser[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+    const loadUsers = async () => {
+        try {
+            setLoading(true);
+            const res = await adminApi.getUsers();
+            if (res.success && Array.isArray(res.data)) {
+                setUsers(res.data);
+            }
+        } catch (err) {
+            console.error('Failed to load users:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadUsers();
+    }, []);
+
+    const toggleUserBan = async (userToToggle: ApiUser) => {
+        try {
+            setActionLoading(userToToggle.id);
+
+            // Pass target boolean status to API
+            const res = await adminApi.toggleBanUser(userToToggle.id, !userToToggle.isBanned);
+
+            if (res.success) {
+                // Update state using server response data if available, fallback to toggle
+                const updatedStatus = res.data?.isBanned ?? !userToToggle.isBanned;
+                setUsers((prev) =>
+                    prev.map((u) => (u.id === userToToggle.id ? { ...u, isBanned: updatedStatus } : u))
+                );
+            }
+        } catch (err) {
+            console.error('Failed to toggle ban status:', err);
+        } finally {
+            setActionLoading(null);
+        }
+    };
 
     const filteredUsers = users.filter(
         (u) =>
@@ -62,19 +61,8 @@ export default function AdminUsersPage() {
             u.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const toggleUserStatus = (id: string) => {
-        setUsers((prev) =>
-            prev.map((user) =>
-                user.id === id
-                    ? { ...user, status: user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' }
-                    : user
-            )
-        );
-    };
-
     return (
         <div className="space-y-6 py-4">
-            {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">User Management</h1>
@@ -87,7 +75,6 @@ export default function AdminUsersPage() {
                 </div>
             </div>
 
-            {/* Search Bar */}
             <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -98,62 +85,73 @@ export default function AdminUsersPage() {
                 />
             </div>
 
-            {/* Users Table / List */}
             <Card className="border-border">
                 <CardHeader className="pb-3">
                     <CardTitle className="text-lg font-semibold">Registered Accounts</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 divide-y divide-border">
-                    {filteredUsers.length > 0 ? (
-                        filteredUsers.map((user) => (
+                    {loading ? (
+                        <div className="flex items-center justify-center p-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        </div>
+                    ) : filteredUsers.length > 0 ? (
+                        filteredUsers.map((u) => (
                             <div
-                                key={user.id}
+                                key={u.id}
                                 className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4 hover:bg-muted/30 transition-colors"
                             >
                                 <div className="flex items-center gap-3">
                                     <Avatar className="h-10 w-10">
                                         <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                                            {user.name.slice(0, 2).toUpperCase()}
+                                            {u.name.slice(0, 2).toUpperCase()}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-sm text-foreground">{user.name}</span>
-                                            <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                                                {user.role}
-                                            </span>
+                                            <span className="font-semibold text-sm text-foreground">{u.name}</span>
+                                            <Badge variant="outline" className="text-[10px]">
+                                                {u.role}
+                                            </Badge>
                                         </div>
-                                        <div className="flex items-center gap-4 text-xs text-muted-foreground mt-0.5">
+                                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-0.5">
                                             <span className="flex items-center gap-1">
-                                                <Mail className="h-3.5 w-3.5" /> {user.email}
+                                                <Mail className="h-3.5 w-3.5" /> {u.email}
                                             </span>
                                             <span className="flex items-center gap-1">
-                                                <Calendar className="h-3.5 w-3.5" /> Joined {user.joinedAt}
+                                                <Calendar className="h-3.5 w-3.5" /> {new Date(u.createdAt).toLocaleDateString()}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center justify-between sm:justify-end gap-3">
-                                    <StatusBadge status={user.status} />
+                                    <Badge
+                                        variant={u.isBanned ? 'destructive' : 'secondary'}
+                                        className={!u.isBanned ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : ''}
+                                    >
+                                        {u.isBanned ? 'BANNED' : 'ACTIVE'}
+                                    </Badge>
 
-                                    {user.role !== 'ADMIN' && (
-                                        <Button
-                                            variant={user.status === 'ACTIVE' ? 'outline' : 'default'}
+                                    {u.role !== 'ADMIN' && (
+                                        <AppButton
+                                            variant={u.isBanned ? 'default' : 'outline'}
                                             size="sm"
-                                            onClick={() => toggleUserStatus(user.id)}
+                                            disabled={actionLoading === u.id}
+                                            onClick={() => toggleUserBan(u)}
                                             className="gap-1.5"
                                         >
-                                            {user.status === 'ACTIVE' ? (
+                                            {actionLoading === u.id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : u.isBanned ? (
                                                 <>
-                                                    <UserX className="h-4 w-4 text-destructive" /> Suspend
+                                                    <UserCheck className="h-4 w-4" /> Unban
                                                 </>
                                             ) : (
                                                 <>
-                                                    <UserCheck className="h-4 w-4" /> Activate
+                                                    <UserX className="h-4 w-4 text-destructive" /> Ban
                                                 </>
                                             )}
-                                        </Button>
+                                        </AppButton>
                                     )}
                                 </div>
                             </div>
