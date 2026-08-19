@@ -3,66 +3,35 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import {
     Building2,
     ArrowLeft,
     PlusCircle,
-    MapPin,
-    DollarSign,
     AlignLeft,
-    Tag,
     Loader2,
     CheckCircle2,
     AlertCircle,
-    ChevronDown,
-    ImagePlus,
-    Trash2,
-    CheckSquare,
-    Square,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AppDropdown, AppDropdownItem } from '@/components/shared/AppDropdown';
 import { AppButton } from '@/components/shared/AppButton';
 
+import {
+    propertySchema,
+    PropertyFormValues,
+    DEFAULT_CATEGORIES,
+    Category,
+} from '@/schemas/property.schema';
+import { PropertyLocationFields } from '../components/PropertyLocationFields';
+import { PropertyPricingFields } from '../components/PropertyPricingFields';
+import { PropertyImageFields } from '../components/PropertyImageFields';
 const BASE_URL = (
     process.env.NEXT_PUBLIC_API_URL || 'https://rentnest-backend-five.vercel.app/api'
 ).replace(/\/$/, '');
-
-const DEFAULT_CATEGORIES = [
-    { id: '7bfa5ebc-d224-4fcb-8653-eabb2c033ada', name: 'Apartment' },
-    { id: '3221f106-cb21-4020-bb5b-283e52992653', name: 'Luxury Villa' },
-    { id: '4331092f-4b2e-401d-9add-0fd525787e5f', name: 'Studio' },
-];
-
-const propertySchema = z.object({
-    title: z.string().min(3, 'Title must be at least 3 characters long'),
-    description: z.string().min(10, 'Description must be at least 10 characters long'),
-    address: z.string().min(2, 'Address is required'),
-    location: z.string().min(2, 'Location/City is required'),
-    price: z.coerce.number().min(1, 'Price must be greater than 0'),
-    categoryId: z.string().min(1, 'Please select a category'),
-    isAvailable: z.boolean().default(true),
-    images: z
-        .array(
-            z.object({
-                url: z.string().url('Please enter a valid Image URL'),
-            })
-        )
-        .min(1, 'At least one image URL is required'),
-});
-
-type PropertyFormValues = z.infer<typeof propertySchema>;
-
-interface Category {
-    id: string;
-    name: string;
-}
 
 export default function CreatePropertyPage() {
     const router = useRouter();
@@ -92,13 +61,7 @@ export default function CreatePropertyPage() {
         },
     });
 
-    const { fields, append, remove } = useFieldArray({
-        control,
-        name: 'images',
-    });
-
-    const selectedCategoryId = watch('categoryId');
-    const isAvailable = watch('isAvailable');
+    // eslint-disable-next-line react-hooks/incompatible-library
     const descriptionValue = watch('description') || '';
 
     useEffect(() => {
@@ -152,7 +115,9 @@ export default function CreatePropertyPage() {
 
             if (!response.ok) {
                 if (result.errorDetails && Array.isArray(result.errorDetails)) {
-                    const details = result.errorDetails.map((err: { message: string }) => err.message).join(' | ');
+                    const details = result.errorDetails
+                        .map((err: { message: string }) => err.message)
+                        .join(' | ');
                     throw new Error(details || result.message);
                 }
                 throw new Error(result.message || 'Failed to create property listing.');
@@ -165,18 +130,10 @@ export default function CreatePropertyPage() {
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';
             setErrorMessage(msg);
-        } fontally: {
+        } finally {
             setSubmitting(false);
         }
     };
-
-    const selectedCategory = categories.find((cat) => cat.id === selectedCategoryId);
-
-    const categoryDropdownItems: AppDropdownItem[] = categories.map((cat) => ({
-        label: cat.name,
-        onClick: () => setValue('categoryId', cat.id, { shouldValidate: true }),
-        className: cat.id === selectedCategoryId ? 'font-semibold text-primary' : '',
-    }));
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 pb-12">
@@ -232,7 +189,9 @@ export default function CreatePropertyPage() {
                                 placeholder="e.g. Modern 2BR Penthouse"
                                 className="rounded-xl border-border/80 bg-background"
                             />
-                            {errors.title && <p className="text-[11px] text-destructive font-medium">{errors.title.message}</p>}
+                            {errors.title && (
+                                <p className="text-[11px] text-destructive font-medium">{errors.title.message}</p>
+                            )}
                         </div>
 
                         {/* Description */}
@@ -241,7 +200,10 @@ export default function CreatePropertyPage() {
                                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                                     <AlignLeft className="h-3.5 w-3.5 text-primary" /> Description
                                 </label>
-                                <span className={`text-[10px] font-mono ${descriptionValue.length < 10 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                <span
+                                    className={`text-[10px] font-mono ${descriptionValue.length < 10 ? 'text-amber-500' : 'text-emerald-500'
+                                        }`}
+                                >
                                     {descriptionValue.length}/10 chars min
                                 </span>
                             </div>
@@ -251,149 +213,23 @@ export default function CreatePropertyPage() {
                                 rows={4}
                                 className="flex w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                             />
-                            {errors.description && <p className="text-[11px] text-destructive font-medium">{errors.description.message}</p>}
+                            {errors.description && (
+                                <p className="text-[11px] text-destructive font-medium">{errors.description.message}</p>
+                            )}
                         </div>
 
-                        {/* Location & Address */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                    <MapPin className="h-3.5 w-3.5 text-primary" /> Location / City
-                                </label>
-                                <Input
-                                    {...register('location')}
-                                    placeholder="e.g. Dhaka"
-                                    className="rounded-xl border-border/80 bg-background"
-                                />
-                                {errors.location && <p className="text-[11px] text-destructive font-medium">{errors.location.message}</p>}
-                            </div>
+                        {/* Modular Form Sections */}
+                        <PropertyLocationFields register={register} errors={errors} />
 
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                    <MapPin className="h-3.5 w-3.5 text-primary" /> Street Address
-                                </label>
-                                <Input
-                                    {...register('address')}
-                                    placeholder="e.g. Bashundhara R/A"
-                                    className="rounded-xl border-border/80 bg-background"
-                                />
-                                {errors.address && <p className="text-[11px] text-destructive font-medium">{errors.address.message}</p>}
-                            </div>
-                        </div>
+                        <PropertyPricingFields
+                            register={register}
+                            setValue={setValue}
+                            watch={watch}
+                            errors={errors}
+                            categories={categories}
+                        />
 
-                        {/* Price, Category & Availability */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                    <DollarSign className="h-3.5 w-3.5 text-primary" /> Monthly Rent ($)
-                                </label>
-                                <Input
-                                    type="number"
-                                    {...register('price')}
-                                    placeholder="e.g. 850"
-                                    className="rounded-xl border-border/80 bg-background"
-                                />
-                                {errors.price && <p className="text-[11px] text-destructive font-medium">{errors.price.message}</p>}
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                    <Tag className="h-3.5 w-3.5 text-primary" /> Category
-                                </label>
-                                <AppDropdown
-                                    align="start"
-                                    className="w-full"
-                                    label="Select Property Category"
-                                    items={categoryDropdownItems}
-                                    trigger={
-                                        <AppButton
-                                            type="button"
-                                            variant="outline"
-                                            className="w-full justify-between rounded-xl border-border/80 bg-background text-sm font-normal h-10 px-3"
-                                        >
-                                            <span className="truncate">
-                                                {selectedCategory ? selectedCategory.name : 'Select Category'}
-                                            </span>
-                                            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground opacity-70" />
-                                        </AppButton>
-                                    }
-                                />
-                                {errors.categoryId && <p className="text-[11px] text-destructive font-medium">{errors.categoryId.message}</p>}
-                            </div>
-                        </div>
-
-                        {/* Availability Toggle */}
-                        <div className="p-4 rounded-2xl border border-border/80 bg-background/50 flex items-center justify-between">
-                            <div>
-                                <p className="text-xs font-bold text-foreground">Listing Availability</p>
-                                <p className="text-[11px] text-muted-foreground">Mark property as ready for immediate lease applications.</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setValue('isAvailable', !isAvailable)}
-                                className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors bg-background"
-                            >
-                                {isAvailable ? (
-                                    <>
-                                        <CheckSquare className="h-4 w-4 text-emerald-500" />
-                                        <span className="text-emerald-600 dark:text-emerald-400">Available</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Square className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-muted-foreground">Occupied</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-
-                        {/* Dynamic Image URLs */}
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                    <ImagePlus className="h-3.5 w-3.5 text-primary" /> Image URLs
-                                </label>
-                                <AppButton
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => append({ url: '' })}
-                                    className="h-7 text-xs rounded-lg gap-1 px-2.5"
-                                >
-                                    <PlusCircle className="h-3.5 w-3.5" /> Add URL
-                                </AppButton>
-                            </div>
-
-                            <div className="space-y-2">
-                                {fields.map((field, index) => (
-                                    <div key={field.id} className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <Input
-                                                {...register(`images.${index}.url`)}
-                                                placeholder="https://images.unsplash.com/photo-..."
-                                                className="rounded-xl border-border/80 bg-background text-xs"
-                                            />
-                                            {fields.length > 1 && (
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => remove(index)}
-                                                    className="h-10 w-10 text-destructive hover:bg-destructive/10 rounded-xl shrink-0"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                        {errors.images?.[index]?.url && (
-                                            <p className="text-[11px] text-destructive font-medium">{errors.images[index]?.url?.message}</p>
-                                        )}
-                                    </div>
-                                ))}
-                                {errors.images?.root && (
-                                    <p className="text-[11px] text-destructive font-medium">{errors.images.root.message}</p>
-                                )}
-                            </div>
-                        </div>
+                        <PropertyImageFields control={control} register={register} errors={errors} />
 
                         {/* Submit Actions */}
                         <div className="pt-4 border-t border-border/60 flex items-center justify-end gap-3">
