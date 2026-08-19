@@ -211,6 +211,8 @@ export interface ApiUser {
 }
 
 export interface ApiProperty {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  images: any;
   id: string;
   title: string;
   description: string;

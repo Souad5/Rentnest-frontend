@@ -44,7 +44,7 @@ export default function LandlordRequestsPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto py-4 space-y-6">
+        <div className="space-y-6">
             <Button variant="ghost" asChild className="gap-2 text-muted-foreground">
                 <Link href="/dashboard/landlord">
                     <ArrowLeft className="h-4 w-4" /> Back to Overview
