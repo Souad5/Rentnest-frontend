@@ -123,7 +123,7 @@ export const landlordApi = {
     ),
 
   getRequests: () =>
-    fetcher<Array<Record<string, unknown>>>("/rentals/landlord-requests"),
+    fetcher<Array<Record<string, unknown>>>("/landlord/requests"),
 
   updateRequestStatus: (id: string, status: "APPROVED" | "REJECTED") =>
     fetcher<Record<string, unknown>>(`/landlord/requests/${id}`, {
@@ -157,20 +157,34 @@ export const rentalsApi = {
 // 5. PAYMENTS API
 // ==========================================
 export const paymentsApi = {
-  createCheckoutSession: (requestId: string) =>
-    fetcher<{ checkoutUrl: string; sessionId: string }>("/payments/create", {
+  createPaymentIntent: (rentalRequestId: string, amount: number) =>
+    fetcher<{
+      success: boolean;
+      message: string;
+      data: {
+        clientSecret: string;
+        transactionId: string;
+        amount: number;
+        currency: string;
+      };
+    }>("/payments/create", {
       method: "POST",
-      body: JSON.stringify({ requestId }),
+      body: JSON.stringify({ rentalRequestId, amount }),
     }),
 
-  confirmPayment: (sessionId: string) =>
-    fetcher<{ success: boolean; payment: Record<string, unknown> }>(
-      "/payments/confirm",
-      {
-        method: "POST",
-        body: JSON.stringify({ sessionId }),
-      },
-    ),
+  confirmPayment: (
+    rentalRequestId: string,
+    paymentIntentId: string,
+    amount: number,
+  ) =>
+    fetcher<{
+      success: boolean;
+      message: string;
+      data: Record<string, unknown>;
+    }>("/payments/confirm", {
+      method: "POST",
+      body: JSON.stringify({ rentalRequestId, paymentIntentId, amount }),
+    }),
 
   getPayments: () => fetcher<Array<Record<string, unknown>>>("/payments"),
 
@@ -265,3 +279,36 @@ export const adminApi = {
       "/admin/properties",
     ),
 };
+
+// ==========================================
+// 7. Rental API
+// ==========================================
+
+export interface CreateRentalPayload {
+  propertyId: string;
+  startDate: string; // ISO string format
+  endDate: string; // ISO string format
+}
+
+export const rentalApi = {
+  async createRental(payload: CreateRentalPayload, token: string) {
+    const res = await fetch(`${BASE_URL}/rentals`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to submit rental request");
+    }
+    return data;
+  },
+};
+
+// ========================
+// ---------Payment Api----
+// =========================

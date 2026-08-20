@@ -1,16 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search, UserCheck, UserX, Mail, Calendar, Loader2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Mail, Calendar, Loader2, Users, UserCheck, UserX, RefreshCw } from 'lucide-react';
+import { createColumnHelper, type ColumnDef } from '@tanstack/react-table';
+
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { adminApi, ApiUser } from '@/lib/api';
+import { Switch } from '@/components/shared/Switch';
 import { AppButton } from '@/components/shared/AppButton';
+import { AppDataTable, type AppDataTableFilterOption } from '@/components/shared/AppDataTable';
+
+const columnHelper = createColumnHelper<ApiUser>();
 
 export default function AdminUsersPage() {
-    const [searchTerm, setSearchTerm] = useState('');
     const [users, setUsers] = useState<ApiUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -37,12 +41,9 @@ export default function AdminUsersPage() {
     const toggleUserBan = async (userToToggle: ApiUser) => {
         try {
             setActionLoading(userToToggle.id);
-
-            // Pass target boolean status to API
             const res = await adminApi.toggleBanUser(userToToggle.id, !userToToggle.isBanned);
 
             if (res.success) {
-                // Update state using server response data if available, fallback to toggle
                 const updatedStatus = res.data?.isBanned ?? !userToToggle.isBanned;
                 setUsers((prev) =>
                     prev.map((u) => (u.id === userToToggle.id ? { ...u, isBanned: updatedStatus } : u))
@@ -55,114 +56,198 @@ export default function AdminUsersPage() {
         }
     };
 
-    const filteredUsers = users.filter(
-        (u) =>
-            u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    const totalActive = users.filter((u) => !u.isBanned).length;
+    const totalBanned = users.filter((u) => u.isBanned).length;
+
+    const roleOptions = useMemo(
+        () => Array.from(new Set(users.map((u) => u.role))).sort(),
+        [users]
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const columns = useMemo<ColumnDef<ApiUser, any>[]>(
+        () => [
+            columnHelper.accessor((row) => `${row.name} ${row.email}`, {
+                id: 'user',
+                header: 'User',
+                enableSorting: true,
+                sortingFn: (a, b) => a.original.name.localeCompare(b.original.name),
+                filterFn: (row, _id, value: string) => {
+                    const search = value.toLowerCase();
+                    return (
+                        row.original.name.toLowerCase().includes(search) ||
+                        row.original.email.toLowerCase().includes(search)
+                    );
+                },
+                cell: (info) => {
+                    const u = info.row.original;
+                    return (
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9 border border-border">
+                                <AvatarFallback className="bg-muted text-foreground font-semibold text-xs">
+                                    {u.name.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm text-foreground">{u.name}</span>
+                                    <Badge variant="secondary" className="text-[10px] font-mono px-1.5 py-0 rounded">
+                                        {u.role}
+                                    </Badge>
+                                </div>
+                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Mail className="h-3 w-3" /> {u.email}
+                                </span>
+                            </div>
+                        </div>
+                    );
+                },
+            }),
+            columnHelper.accessor('role', {
+                id: 'role',
+                header: 'Role',
+                enableSorting: true,
+                enableColumnFilter: true,
+                filterFn: 'equalsString',
+                cell: (info) => (
+                    <span className="text-xs font-mono text-muted-foreground">{info.getValue()}</span>
+                ),
+            }),
+            columnHelper.accessor('createdAt', {
+                id: 'createdAt',
+                header: 'Joined',
+                enableSorting: true,
+                sortingFn: 'datetime',
+                cell: (info) => (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(info.getValue()).toLocaleDateString()}
+                    </span>
+                ),
+            }),
+            columnHelper.accessor('isBanned', {
+                id: 'status',
+                header: 'Status',
+                enableSorting: true,
+                enableColumnFilter: true,
+                filterFn: (row, _id, value: string) => {
+                    if (!value) return true;
+                    return value === 'banned' ? row.original.isBanned : !row.original.isBanned;
+                },
+                cell: (info) => {
+                    const u = info.row.original;
+                    return (
+                        <div className="flex items-center justify-end gap-3">
+                            <span
+                                className={`text-xs font-medium ${u.isBanned ? 'text-destructive' : 'text-muted-foreground'
+                                    }`}
+                            >
+                                {u.isBanned ? 'Banned' : 'Active'}
+                            </span>
+
+                            {u.role !== 'ADMIN' ? (
+                                actionLoading === u.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                ) : (
+                                    <motion.div
+                                        whileTap={{ scale: 0.9 }}
+                                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                    >
+                                        <Switch
+                                            checked={!u.isBanned}
+                                            onCheckedChange={() => toggleUserBan(u)}
+                                            aria-label="Toggle user status"
+                                            className="cursor-pointer"
+                                        />
+                                    </motion.div>
+                                )
+                            ) : (
+                                <span className="text-xs text-muted-foreground/60 italic">Protected</span>
+                            )}
+                        </div>
+                    );
+                },
+            }),
+        ],
+        [actionLoading]
+    );
+
+    const filters: AppDataTableFilterOption[] = [
+        {
+            columnId: 'role',
+            placeholder: 'All roles',
+            options: roleOptions.map((role) => ({ label: role, value: role })),
+        },
+        {
+            columnId: 'status',
+            placeholder: 'All statuses',
+            options: [
+                { label: 'Active', value: 'active' },
+                { label: 'Banned', value: 'banned' },
+            ],
+        },
+    ];
+
     return (
-        <div className="space-y-6 py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-6">
+            {/* Minimal Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">User Management</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        View registered tenants, landlords, and administrators.
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">User Directory</h1>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                        Manage registered accounts and control user permissions.
                     </p>
                 </div>
-                <div className="text-xs text-muted-foreground font-medium">
-                    Total Users: {users.length}
+
+                <AppButton
+                    variant="outline"
+                    size="sm"
+                    onClick={loadUsers}
+                    disabled={loading}
+                    className="h-9 px-3 gap-2 shrink-0 self-start sm:self-center"
+                >
+                    <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+                    <span>Refresh</span>
+                </AppButton>
+            </div>
+
+            {/* Clean Metrics Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-4 rounded-xl border border-border bg-card flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-medium text-muted-foreground">Total Users</p>
+                        <p className="text-2xl font-semibold text-foreground mt-0.5">{users.length}</p>
+                    </div>
+                    <Users className="h-5 w-5 text-muted-foreground/60" />
+                </div>
+
+                <div className="p-4 rounded-xl border border-border bg-card flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-medium text-muted-foreground">Active Accounts</p>
+                        <p className="text-2xl font-semibold text-foreground mt-0.5">{totalActive}</p>
+                    </div>
+                    <UserCheck className="h-5 w-5 text-muted-foreground/60" />
+                </div>
+
+                <div className="p-4 rounded-xl border border-border bg-card flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-medium text-muted-foreground">Banned Accounts</p>
+                        <p className="text-2xl font-semibold text-foreground mt-0.5">{totalBanned}</p>
+                    </div>
+                    <UserX className="h-5 w-5 text-muted-foreground/60" />
                 </div>
             </div>
 
-            <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Search by name or email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                />
-            </div>
-
-            <Card className="border-border">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-lg font-semibold">Registered Accounts</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0 divide-y divide-border">
-                    {loading ? (
-                        <div className="flex items-center justify-center p-8">
-                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        </div>
-                    ) : filteredUsers.length > 0 ? (
-                        filteredUsers.map((u) => (
-                            <div
-                                key={u.id}
-                                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4 hover:bg-muted/30 transition-colors"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <Avatar className="h-10 w-10">
-                                        <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                                            {u.name.slice(0, 2).toUpperCase()}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-sm text-foreground">{u.name}</span>
-                                            <Badge variant="outline" className="text-[10px]">
-                                                {u.role}
-                                            </Badge>
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                                            <span className="flex items-center gap-1">
-                                                <Mail className="h-3.5 w-3.5" /> {u.email}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Calendar className="h-3.5 w-3.5" /> {new Date(u.createdAt).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between sm:justify-end gap-3">
-                                    <Badge
-                                        variant={u.isBanned ? 'destructive' : 'secondary'}
-                                        className={!u.isBanned ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : ''}
-                                    >
-                                        {u.isBanned ? 'BANNED' : 'ACTIVE'}
-                                    </Badge>
-
-                                    {u.role !== 'ADMIN' && (
-                                        <AppButton
-                                            variant={u.isBanned ? 'default' : 'outline'}
-                                            size="sm"
-                                            disabled={actionLoading === u.id}
-                                            onClick={() => toggleUserBan(u)}
-                                            className="gap-1.5"
-                                        >
-                                            {actionLoading === u.id ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : u.isBanned ? (
-                                                <>
-                                                    <UserCheck className="h-4 w-4" /> Unban
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <UserX className="h-4 w-4 text-destructive" /> Ban
-                                                </>
-                                            )}
-                                        </AppButton>
-                                    )}
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="text-center py-12 text-sm text-muted-foreground">
-                            No users found matching &quot;{searchTerm}&quot;.
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+            <AppDataTable
+                columns={columns}
+                data={users}
+                loading={loading}
+                searchPlaceholder="Filter by name or email..."
+                filters={filters}
+                rightAlignColumnId="status"
+                emptyMessage="No user accounts found matching your filters."
+                loadingMessage="Loading users..."
+            />
         </div>
     );
 }

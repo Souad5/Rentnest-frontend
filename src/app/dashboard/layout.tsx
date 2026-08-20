@@ -12,7 +12,7 @@ import {
     Menu,
     X,
     Bell,
-    FileCheck2,
+    // FileCheck2,
     PlusCircle,
     Search,
     CheckSquare,
@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth, UserRole } from '@/providers/AuthProvider';
+import { AppButton } from '@/components/shared/AppButton';
 
 interface NavItem {
     label: string;
@@ -33,7 +34,7 @@ interface NavItem {
 const navByRole: Record<UserRole, NavItem[]> = {
     TENANT: [
         { label: 'Overview', href: '/dashboard/tenant', icon: Home },
-        { label: 'My Requests', href: '/dashboard/tenant/requests', icon: FileCheck2 },
+        // { label: 'My Requests', href: '/dashboard/tenant/requests', icon: FileCheck2 },
         { label: 'Browse Properties', href: '/properties', icon: Search },
     ],
     LANDLORD: [
@@ -148,14 +149,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Sign Out Button */}
                 <div className="pt-4 border-t border-border/60">
-                    <Button
+                    <AppButton
                         variant="ghost"
                         onClick={logout}
                         className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl text-sm"
                     >
                         <LogOut className="h-4 w-4" />
                         Sign Out
-                    </Button>
+                    </AppButton>
                 </div>
             </aside>
 

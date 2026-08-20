@@ -26,9 +26,9 @@ import {
     DEFAULT_CATEGORIES,
     Category,
 } from '@/schemas/property.schema';
-import { PropertyLocationFields } from '../components/PropertyLocationFields';
-import { PropertyPricingFields } from '../components/PropertyPricingFields';
-import { PropertyImageFields } from '../components/PropertyImageFields';
+import { PropertyLocationFields } from './components/PropertyLocationFields';
+import { PropertyPricingFields } from './components/PropertyPricingFields';
+import { PropertyImageFields } from './components/PropertyImageFields';
 const BASE_URL = (
     process.env.NEXT_PUBLIC_API_URL || 'https://rentnest-backend-five.vercel.app/api'
 ).replace(/\/$/, '');
@@ -136,7 +136,7 @@ export default function CreatePropertyPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 pb-12">
+        <div className="space-y-6 pb-12">
             <div className="flex items-center justify-between">
                 <Button asChild variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground rounded-xl">
                     <Link href="/dashboard/landlord">

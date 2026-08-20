@@ -1,23 +1,13 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import {
-    ColumnDef,
-    Row,
-    HeaderGroup,
-    Header,
-    Cell,
-    flexRender,
-    getCoreRowModel,
-    getFilteredRowModel,
-    useReactTable,
-} from '@tanstack/react-table';
-import { Search, Loader2, Building2, Plus, Eye, Edit, Trash2, CheckCircle2, Clock } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { type ColumnDef } from '@tanstack/react-table';
+import { Search, Building2, Plus, Eye, Edit, Trash2, CheckCircle2, Clock } from 'lucide-react';
+import { AppInput } from '@/components/shared/AppInput';
 import { AppButton } from '@/components/shared/AppButton';
+import { AppDataTable } from '@/components/shared/AppDataTable';
 import { ApiProperty } from '@/lib/api';
 
 interface PropertiesTableProps {
@@ -31,13 +21,13 @@ interface PropertiesTableProps {
 export function PropertiesTable({
     properties,
     isLoading,
-    userId,
     onDelete,
     onToggleAvailability,
 }: PropertiesTableProps) {
     const [globalFilter, setGlobalFilter] = useState('');
 
-    const columns = useMemo<ColumnDef<ApiProperty>[]>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const columns = useMemo<ColumnDef<ApiProperty, any>[]>(
         () => [
             {
                 accessorKey: 'title',
@@ -82,13 +72,21 @@ export function PropertiesTable({
             {
                 accessorKey: 'price',
                 header: 'Price',
+                enableSorting: true,
                 cell: ({ getValue }) => (
                     <span className="font-bold text-slate-900">${getValue<number>()}/mo</span>
                 ),
             },
             {
                 accessorKey: 'isAvailable',
+                id: 'status',
                 header: 'Status',
+                enableColumnFilter: true,
+                filterFn: (row, _id, value: string) => {
+                    if (!value) return true;
+                    const isAvailable = row.original.isAvailable ?? true;
+                    return value === 'available' ? isAvailable : !isAvailable;
+                },
                 cell: ({ row }) => {
                     const property = row.original;
                     return (
@@ -143,99 +141,73 @@ export function PropertiesTable({
         [onDelete, onToggleAvailability]
     );
 
-    // eslint-disable-next-line react-hooks/incompatible-library
-    const table = useReactTable({
-        data: properties,
-        columns,
-        state: {
-            globalFilter,
-        },
-        onGlobalFilterChange: setGlobalFilter,
-        getCoreRowModel: getCoreRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
-    });
-
     return (
         <div className="p-6 rounded-3xl border border-slate-100 bg-white shadow-xs space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-lg font-bold text-slate-900">My Listed Properties</h2>
                     <p className="text-xs text-slate-500">
-                        Properties owned and configured under your account ID ({userId || 'N/A'})
+                        Properties owned and configured under your account
                     </p>
                 </div>
 
                 <div className="flex items-center gap-2">
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                        <Input
+                        <AppInput
                             placeholder="Search property name or city..."
                             value={globalFilter}
                             onChange={(e) => setGlobalFilter(e.target.value)}
                             className="pl-9 h-9 text-xs rounded-xl border-slate-200 bg-slate-50/50"
                         />
                     </div>
-                    <AppButton variant="outline" className="h-9 text-xs border-slate-200 rounded-xl">
-                        Filter
-                    </AppButton>
                 </div>
             </div>
 
-            {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-16 space-y-2">
-                    <Loader2 className="h-7 w-7 animate-spin text-orange-500" />
-                    <p className="text-xs text-slate-500">Loading listings...</p>
-                </div>
-            ) : table.getRowModel().rows.length > 0 ? (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                        <thead>
-                            {table.getHeaderGroups().map((headerGroup: HeaderGroup<ApiProperty>) => (
-                                <tr key={headerGroup.id} className="border-b border-slate-100 text-slate-400 uppercase tracking-wider font-semibold">
-                                    {headerGroup.headers.map((header: Header<ApiProperty, unknown>) => (
-                                        <th key={header.id} className="pb-3 px-2">
-                                            {header.isPlaceholder
-                                                ? null
-                                                : flexRender(
-                                                    header.column.columnDef.header,
-                                                    header.getContext()
-                                                )}
-                                        </th>
-                                    ))}
-                                </tr>
-                            ))}
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {table.getRowModel().rows.map((row: Row<ApiProperty>) => (
-                                <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
-                                    {row.getVisibleCells().map((cell: Cell<ApiProperty, unknown>) => (
-                                        <td key={cell.id} className="py-3.5 px-2">
-                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            ) : (
-                <div className="text-center py-16 border border-dashed border-slate-200 rounded-2xl p-6 space-y-3">
-                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                        <Building2 className="h-5 w-5" />
+            <AppDataTable
+                columns={columns}
+                data={properties}
+                loading={isLoading}
+                hideToolbar
+                globalFilter={globalFilter}
+                onGlobalFilterChange={setGlobalFilter}
+                filters={[
+                    {
+                        columnId: 'status',
+                        placeholder: 'All statuses',
+                        options: [
+                            { label: 'Available', value: 'available' },
+                            { label: 'Occupied', value: 'occupied' },
+                        ],
+                    },
+                ]}
+                rightAlignColumnId="actions"
+                containerClassName=""
+                headerRowClassName="border-b border-slate-100 text-slate-400 uppercase tracking-wider font-semibold"
+                rowClassName="hover:bg-slate-50/60 transition-colors"
+                tableTextClassName="text-xs"
+                pageSizeOptions={[10, 25, 50]}
+                initialPageSize={10}
+                loadingMessage="Loading listings..."
+                emptyState={
+                    <div className="text-center py-16 border border-dashed border-slate-200 rounded-2xl p-6 space-y-3">
+                        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                            <Building2 className="h-5 w-5" />
+                        </div>
+                        <div className="space-y-0.5">
+                            <p className="text-sm font-semibold text-slate-800">No properties found</p>
+                            <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                                You currently have no properties associated with your landlord account.
+                            </p>
+                        </div>
+                        <AppButton asChild className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs h-9 px-4">
+                            <Link href="/dashboard/landlord/properties/new">
+                                <Plus className="h-3.5 w-3.5 mr-1" /> Add Your First Property
+                            </Link>
+                        </AppButton>
                     </div>
-                    <div className="space-y-0.5">
-                        <p className="text-sm font-semibold text-slate-800">No properties found</p>
-                        <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                            You currently have no properties associated with your landlord account.
-                        </p>
-                    </div>
-                    <AppButton asChild className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs h-9 px-4">
-                        <Link href="/dashboard/landlord/properties/new">
-                            <Plus className="h-3.5 w-3.5 mr-1" /> Add Your First Property
-                        </Link>
-                    </AppButton>
-                </div>
-            )}
+                }
+            />
         </div>
     );
 }

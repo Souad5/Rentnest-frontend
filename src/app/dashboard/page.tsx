@@ -79,7 +79,7 @@ export default function DashboardPage() {
     const activeMeta = roleMeta[role];
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8 pb-12">
+        <div className="space-y-8">
             {/* SaaS Banner */}
             <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-linear-to-br from-card via-card to-primary/5 p-6 sm:p-8 shadow-xs">
                 <div className="absolute top-0 right-0 -mr-20 -mt-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl pointer-events-none" />

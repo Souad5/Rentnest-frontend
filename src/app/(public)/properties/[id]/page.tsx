@@ -7,7 +7,6 @@ import {
     Calendar,
     CheckCircle2,
     ShieldCheck,
-    Mail,
     Phone,
     Building2,
     Share2,
@@ -18,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import StatusBadge from '@/components/shared/StatusBadge';
+import { RentalRequestForm } from '@/components/forms/RentalRequestForm';
 
 const BASE_URL = (
     process.env.NEXT_PUBLIC_API_URL || 'https://rentnest-backend-five.vercel.app/api'
@@ -66,11 +66,10 @@ const DEFAULT_AMENITIES = [
     'Hardwood Flooring',
 ];
 
-// Helper to fetch property details directly from backend
 async function getPropertyDetail(id: string): Promise<PropertyDetail | null> {
     try {
         const res = await fetch(`${BASE_URL}/properties/${id}`, {
-            cache: 'no-store', // Ensures fresh data per request
+            cache: 'no-store',
         });
 
         if (!res.ok) {
@@ -108,7 +107,6 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
         })
         : 'Recently';
 
-    // Landlord initials fallback
     const landlordName = property.landlord?.name || 'Landlord Partner';
     const landlordInitials = landlordName
         .split(' ')
@@ -137,7 +135,7 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
             </div>
 
             {/* Photo Gallery Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-2xl overflow-hidden border border-border shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-2xl overflow-hidden border border-border shadow-xs">
                 <div className="relative aspect-16/10 md:aspect-auto md:col-span-2 min-h-80 bg-muted">
                     <Image
                         src={images[0]}
@@ -173,9 +171,8 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
 
             {/* Content & Action Sidebar */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Details (2 Columns) */}
+                {/* Main Details */}
                 <div className="lg:col-span-2 space-y-8">
-                    {/* Header Info */}
                     <div className="space-y-3">
                         <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
                             <div className="flex items-center gap-1.5">
@@ -201,7 +198,6 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                         </p>
                     </div>
 
-                    {/* Key Specifications Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 rounded-xl border border-border bg-card p-4 text-center">
                         <div className="flex flex-col items-center justify-center p-2">
                             <Tag className="h-5 w-5 text-primary mb-1" />
@@ -224,7 +220,6 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                         </div>
                     </div>
 
-                    {/* Description */}
                     <div className="space-y-3 border-t border-border pt-6">
                         <h2 className="text-xl font-semibold">About this property</h2>
                         <p className="text-muted-foreground leading-relaxed text-sm sm:text-base whitespace-pre-line">
@@ -232,7 +227,6 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                         </p>
                     </div>
 
-                    {/* Amenities & Features */}
                     <div className="space-y-4 border-t border-border pt-6">
                         <h2 className="text-xl font-semibold">Features & Amenities</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -245,7 +239,6 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                         </div>
                     </div>
 
-                    {/* Additional Metadata */}
                     <div className="flex items-center gap-6 border-t border-border pt-6 text-xs text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1.5">
                             <Calendar className="h-4 w-4" /> Listed: {formattedDate}
@@ -256,15 +249,14 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                     </div>
                 </div>
 
-                {/* Sidebar Sticky Contact / Application Card */}
+                {/* Sidebar Sticky Contact / Rental Application Card */}
                 <div className="lg:col-span-1">
-                    <Card className="sticky top-20 border-border shadow-sm space-y-6">
+                    <Card className="sticky top-20 border-border shadow-xs space-y-6">
                         <CardHeader className="pb-4">
                             <CardTitle className="text-lg">Interested in this property?</CardTitle>
                         </CardHeader>
 
                         <CardContent className="space-y-6">
-                            {/* Landlord Brief */}
                             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
                                 <Avatar className="h-10 w-10">
                                     <AvatarFallback className="bg-primary/10 text-primary font-bold">
@@ -281,12 +273,14 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                                 </div>
                             </div>
 
-                            {/* Action Buttons */}
+                            {/* Interactive Rental Request Modal Form */}
                             <div className="space-y-3">
-                                <Button className="w-full gap-2" disabled={!isAvailable}>
-                                    <Mail className="h-4 w-4" />{' '}
-                                    {isAvailable ? 'Request Tour / Contact' : 'Property Rented'}
-                                </Button>
+                                <RentalRequestForm
+                                    propertyId={property.id}
+                                    propertyTitle={property.title}
+                                    price={property.price}
+                                    isAvailable={isAvailable}
+                                />
                                 <Button
                                     variant="outline"
                                     className="w-full gap-2"

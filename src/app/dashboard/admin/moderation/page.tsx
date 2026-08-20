@@ -1,11 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ShieldAlert, Building2, Eye, Loader2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    ShieldAlert,
+    Eye,
+    Loader2,
+    MapPin,
+    User,
+    Building2,
+    Mail,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { adminApi } from '@/lib/api';
-import { AppButton } from '@/components/shared/AppButton';
 
 interface Property {
     id: string;
@@ -40,56 +49,139 @@ export default function AdminModerationPage() {
     }, []);
 
     return (
-        <div className="space-y-6 py-4">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">Content Moderation</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                    Review and inspect all submitted property listings across the platform.
-                </p>
+        <div className="space-y-6 py-6 max-w-7xl mx-auto px-4 sm:px-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                        Content Moderation
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                        Inspect property listings, audit availability, and verify landlord submissions.
+                    </p>
+                </div>
+                <div className="text-xs font-mono text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md border border-border self-start sm:self-center">
+                    Total Listings: {properties.length}
+                </div>
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center p-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="flex flex-col items-center justify-center p-16 space-y-3">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Fetching listings data...</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-4">
-                    {properties.map((property) => (
-                        <Card key={property.id} className="border-border">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                                    <Building2 className="h-5 w-5 text-primary" />
-                                    {property.title}
-                                </CardTitle>
-                                <Badge variant={property.isAvailable ? 'secondary' : 'outline'}>
-                                    {property.isAvailable ? 'AVAILABLE' : 'UNAVAILABLE'}
-                                </Badge>
-                            </CardHeader>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <AnimatePresence>
+                        {properties.map((property) => (
+                            <motion.div
+                                key={property.id}
+                                layout
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="group flex flex-col rounded-xl border border-border bg-card p-5 hover:shadow-md transition-all duration-300 justify-between space-y-4"
+                            >
+                                {/* Top Badges & Status Header */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <Badge
+                                            variant="secondary"
+                                            className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 ${property.isAvailable
+                                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                                : 'bg-destructive/10 text-destructive border border-destructive/20'
+                                                }`}
+                                        >
+                                            {property.isAvailable ? 'Available' : 'Unavailable'}
+                                        </Badge>
 
-                            <CardContent className="space-y-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-muted-foreground">
-                                    <span>Location: {property.location} ({property.address})</span>
-                                    <span className="font-semibold text-foreground">${property.price} / month</span>
+                                        {property.category?.name && (
+                                            <Badge
+                                                variant="outline"
+                                                className="text-[10px] font-medium border-border"
+                                            >
+                                                {property.category.name}
+                                            </Badge>
+                                        )}
+                                    </div>
+
+                                    {/* Main Title & Location */}
+                                    <div className="space-y-1">
+                                        <h3 className="font-semibold text-foreground text-base line-clamp-1 group-hover:text-primary transition-colors flex items-center gap-1.5">
+                                            <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                            <span>{property.title}</span>
+                                        </h3>
+
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                            <span className="truncate">
+                                                {property.location}
+                                                {property.address ? `, ${property.address}` : ''}
+                                            </span>
+                                        </p>
+                                    </div>
+
+                                    {/* Description */}
+                                    <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed pt-1">
+                                        {property.description}
+                                    </p>
                                 </div>
 
-                                <p className="text-sm text-muted-foreground line-clamp-2">
-                                    {property.description}
-                                </p>
+                                {/* Footer Info & Action Button */}
+                                <div className="pt-3 border-t border-border/60 space-y-3">
+                                    {/* Landlord Info */}
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
+                                        <div className="flex items-center gap-1.5 truncate">
+                                            <User className="h-3.5 w-3.5 shrink-0" />
+                                            <span className="truncate font-medium text-foreground">
+                                                {property.landlord?.name || 'Unknown'}
+                                            </span>
+                                        </div>
+                                        {property.landlord?.email && (
+                                            <span className="flex items-center gap-1 text-[11px] truncate text-muted-foreground/80">
+                                                <Mail className="h-3 w-3 shrink-0" />
+                                                <span className="truncate">{property.landlord.email}</span>
+                                            </span>
+                                        )}
+                                    </div>
 
-                                <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
-                                    <span>Landlord: {property.landlord?.name || 'Unknown'} ({property.landlord?.email})</span>
-                                    <AppButton variant="outline" size="sm" className="gap-1.5">
-                                        <Eye className="h-4 w-4" /> Inspect Listing
-                                    </AppButton>
+                                    {/* Price & Inspect Button */}
+                                    <div className="flex items-center justify-between pt-1">
+                                        <div>
+                                            <span className="text-base font-bold text-foreground">
+                                                ${property.price}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground font-normal">
+                                                {' '}
+                                                / month
+                                            </span>
+                                        </div>
+
+                                        <Button
+                                            asChild
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 text-xs gap-1.5 rounded-lg hover:bg-foreground hover:text-background transition-colors"
+                                        >
+                                            <Link href={`/properties/${property.id}`}>
+                                                <Eye className="h-3.5 w-3.5" />
+                                                <span>Inspect</span>
+                                            </Link>
+                                        </Button>
+                                    </div>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
 
                     {properties.length === 0 && (
-                        <div className="text-center py-12 border border-dashed border-border rounded-xl">
+                        <div className="col-span-full text-center py-16 border border-dashed border-border rounded-xl bg-card">
                             <ShieldAlert className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground">No property listings found in the system.</p>
+                            <p className="text-sm font-medium text-foreground">No Listings Found</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                There are currently no property listings registered in the database.
+                            </p>
                         </div>
                     )}
                 </div>
