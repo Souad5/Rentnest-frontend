@@ -1,29 +1,21 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements } from '@stripe/react-stripe-js';
-import {
-    ArrowLeft,
-    Building2,
-    Calendar,
-    CreditCard,
-    Loader2,
-    ShieldAlert,
-    CheckCircle2,
-    Receipt,
-} from 'lucide-react';
+import { ArrowLeft, Loader2, ShieldAlert, CreditCard, CalendarDays, MapPin } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import { AppButton } from '@/components/shared/AppButton';
 import { rentalsApi, paymentsApi, ApiError } from '@/lib/api';
-import { CheckoutForm } from './CheckoutForm';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
-// Initialize Stripe outside component render
-const stripePromise = loadStripe(
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
-);
 
 interface RentalRequestDetail {
     id: string;
@@ -40,12 +32,16 @@ interface RentalRequestDetail {
 
 export default function TenantPaymentPage() {
     const params = useParams();
+    const router = useRouter();
     const requestId = params.id as string;
 
     const [requestDetail, setRequestDetail] = useState<RentalRequestDetail | null>(null);
-    const [clientSecret, setClientSecret] = useState<string | null>(null);
-    const [loading, setLoading] = useState<boolean>(true);
+    const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [paymentError, setPaymentError] = useState<string | null>(null);
 
     const initCheckout = useCallback(async () => {
         if (!requestId) return;
@@ -53,28 +49,28 @@ export default function TenantPaymentPage() {
         setError(null);
 
         try {
-            // 1. Fetch Request details to get amount and property info
             const rentalResponse = await rentalsApi.getById(requestId);
-            const rental = (rentalResponse as { data?: RentalRequestDetail }).data || rentalResponse;
-
-            const reqData = rental as RentalRequestDetail;
+            const reqData = ((rentalResponse as { data?: RentalRequestDetail }).data || rentalResponse) as RentalRequestDetail;
             setRequestDetail(reqData);
 
-            const amountToPay = reqData.property?.price || 0;
+            const amountToPay = reqData.property?.price ?? 0;
 
             if (reqData.status !== 'APPROVED') {
                 setError('This rental request is not approved for payment.');
-                setLoading(false);
                 return;
             }
 
-            // 2. Initialize PaymentIntent on backend
+            if (amountToPay <= 0) {
+                setError('Invalid property rental price.');
+                return;
+            }
+
             const paymentRes = await paymentsApi.createPaymentIntent(requestId, amountToPay);
 
-            if (paymentRes.data?.clientSecret) {
-                setClientSecret(paymentRes.data.clientSecret);
+            if (paymentRes.data?.transactionId) {
+                setPaymentIntentId(paymentRes.data.transactionId); // ✅ only need this
             } else {
-                throw new Error('Failed to obtain client secret from payment provider.');
+                throw new Error('Failed to obtain payment intent.');
             }
         } catch (err) {
             if (err instanceof ApiError) {
@@ -92,163 +88,155 @@ export default function TenantPaymentPage() {
         initCheckout();
     }, [initCheckout]);
 
+    const handleConfirmPayment = async () => {
+        if (!paymentIntentId) return;
+
+        setIsProcessing(true);
+        setPaymentError(null);
+
+        try {
+            const amount = requestDetail?.property?.price ?? 0;
+
+            // Just call your backend confirm directly — no Stripe.js needed
+            await paymentsApi.confirmPayment(requestId, paymentIntentId, amount);
+            router.push('/dashboard/tenant/requests/payment-success');
+        } catch (err) {
+            if (err instanceof ApiError) {
+                setPaymentError(err.message);
+            } else {
+                setPaymentError('Payment failed. Please try again.');
+            }
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     if (loading) {
         return (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-3">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Preparing secure checkout environment...</p>
+            <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Preparing checkout…</p>
             </div>
         );
     }
 
     if (error || !requestDetail) {
         return (
-            <div className="max-w-md mx-auto my-12 text-center p-8 border border-border rounded-2xl bg-card shadow-xs space-y-4">
-                <ShieldAlert className="h-12 w-12 text-destructive mx-auto" />
-                <h2 className="text-lg font-bold text-foreground">Checkout Unavailable</h2>
-                <p className="text-xs text-muted-foreground">{error || 'Rental details not found.'}</p>
-                <Button asChild size="sm" variant="outline">
-                    <Link href="/dashboard/tenant/requests">Return to Requests</Link>
-                </Button>
+            <div className="max-w-sm mx-auto my-16 text-center space-y-3">
+                <ShieldAlert className="h-8 w-8 text-destructive mx-auto" />
+                <p className="text-sm text-muted-foreground">{error || 'Rental details not found.'}</p>
+                <AppButton asChild size="sm" variant="ghost">
+                    <Link href="/dashboard/tenant">
+                        <ArrowLeft className="h-3.5 w-3.5" /> Back to requests
+                    </Link>
+                </AppButton>
             </div>
         );
     }
 
-    const amount = requestDetail.property?.price || 0;
+    const amount = requestDetail.property?.price ?? 0;
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            {/* Back Button */}
-            <div>
-                <Button variant="ghost" asChild className="gap-2 text-muted-foreground px-0 hover:bg-transparent">
-                    <Link href="/dashboard/tenant/requests">
-                        <ArrowLeft className="h-4 w-4" /> Back to Requests
-                    </Link>
-                </Button>
-            </div>
+        <div className="max-w-md mx-auto space-y-6 py-8 px-4">
+            {/* Back */}
+            <Link
+                href="/dashboard/tenant"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+                <ArrowLeft className="h-3.5 w-3.5" /> Back to requests
+            </Link>
 
-            {/* Page Title */}
-            <div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                    <CreditCard className="h-7 w-7 text-emerald-600" />
-                    Complete Rental Payment
-                </h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                    Review details and enter payment information to activate your lease.
-                </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-                {/* Left Column: Stripe Form */}
-                <div className="md:col-span-7 space-y-4">
-                    {clientSecret && (
-                        <Elements
-                            stripe={stripePromise}
-                            options={{
-                                clientSecret,
-                                appearance: {
-                                    theme: 'stripe',
-                                    variables: {
-                                        colorPrimary: '#10b981',
-                                    },
-                                },
-                            }}
-                        >
-                            <CheckoutForm
-                                rentalRequestId={requestId}
-                                amount={amount}
-                                clientSecret={clientSecret}
-                            />
-                        </Elements>
-                    )}
+            {/* Payment Summary Card */}
+            <div className="rounded-xl border border-border bg-card p-6 space-y-5">
+                <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                        Payment Summary
+                    </p>
+                    <h1 className="text-xl font-semibold text-foreground">
+                        {requestDetail.property?.title}
+                    </h1>
                 </div>
 
-                {/* Right Column: Order Summary */}
-                <div className="md:col-span-5 space-y-4">
-                    <div className="rounded-2xl border border-border bg-card p-6 shadow-2xs space-y-5">
-                        <div className="flex items-center gap-2 pb-4 border-b border-border">
-                            <Receipt className="h-5 w-5 text-muted-foreground" />
-                            <h2 className="font-semibold text-foreground text-base">Payment Summary</h2>
+                <div className="space-y-3 text-sm">
+                    {requestDetail.property?.location && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <MapPin className="h-4 w-4 shrink-0" />
+                            <span>{requestDetail.property.location}</span>
                         </div>
-
-                        {/* Property Card Info */}
-                        <div className="space-y-3">
-                            <div className="flex items-start gap-3">
-                                <div className="h-12 w-12 rounded-xl bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden">
-                                    {requestDetail.property?.images?.[0] ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img
-                                            src={requestDetail.property.images[0]}
-                                            alt={requestDetail.property.title}
-                                            className="h-full w-full object-cover"
-                                        />
-                                    ) : (
-                                        <Building2 className="h-6 w-6 text-muted-foreground" />
-                                    )}
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-foreground text-sm leading-tight">
-                                        {requestDetail.property?.title}
-                                    </h3>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        {requestDetail.property?.location}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Lease Dates */}
-                            <div className="p-3 rounded-xl bg-muted/50 border border-border/60 text-xs space-y-1.5">
-                                <div className="flex items-center justify-between text-muted-foreground">
-                                    <span className="flex items-center gap-1.5">
-                                        <Calendar className="h-3.5 w-3.5" /> Start Date
-                                    </span>
-                                    <span className="font-medium text-foreground">
-                                        {new Date(requestDetail.startDate).toLocaleDateString()}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between text-muted-foreground">
-                                    <span className="flex items-center gap-1.5">
-                                        <Calendar className="h-3.5 w-3.5" /> End Date
-                                    </span>
-                                    <span className="font-medium text-foreground">
-                                        {new Date(requestDetail.endDate).toLocaleDateString()}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Price Breakdown */}
-                        <div className="pt-4 border-t border-border space-y-2 text-xs">
-                            <div className="flex justify-between text-muted-foreground">
-                                <span>First Month Rent</span>
-                                <span className="font-medium text-foreground">${amount.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-muted-foreground">
-                                <span>Service Fee</span>
-                                <span className="font-medium text-foreground">$0.00</span>
-                            </div>
-                            <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/60">
-                                <span>Total Due Now</span>
-                                <span className="text-emerald-600 dark:text-emerald-400">
-                                    ${amount.toFixed(2)}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Features List */}
-                        <div className="pt-2 text-[11px] text-muted-foreground space-y-1.5">
-                            <div className="flex items-center gap-1.5">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                <span>Instant lease activation upon approval</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                <span>Automated digital receipt emailed to you</span>
-                            </div>
-                        </div>
+                    )}
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <CalendarDays className="h-4 w-4 shrink-0" />
+                        <span>
+                            {new Date(requestDetail.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            {' – '}
+                            {new Date(requestDetail.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
                     </div>
                 </div>
+
+                <div className="border-t border-border pt-4 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Total Amount</span>
+                    <span className="text-2xl font-bold text-foreground">${amount.toFixed(2)}</span>
+                </div>
             </div>
+
+            {/* Pay Button */}
+            <AppButton
+                onClick={() => setDialogOpen(true)}
+                disabled={!paymentIntentId}
+                className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-medium gap-2"
+            >
+                <CreditCard className="h-4 w-4" />
+                Pay ${amount.toFixed(2)}
+            </AppButton>
+
+            <p className="text-center text-[11px] text-muted-foreground">
+                Payments are securely processed by Stripe
+            </p>
+
+            {/* Confirm Payment Dialog */}
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Confirm Payment</DialogTitle>
+                        <DialogDescription>
+                            You are about to pay <strong>${amount.toFixed(2)}</strong> for{' '}
+                            <strong>{requestDetail.property?.title}</strong>. This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {paymentError && (
+                        <p className="text-xs text-destructive text-center px-1">{paymentError}</p>
+                    )}
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <AppButton
+                            variant="outline"
+                            onClick={() => setDialogOpen(false)}
+                            disabled={isProcessing}
+                        >
+                            Cancel
+                        </AppButton>
+                        <AppButton
+                            onClick={handleConfirmPayment}
+                            disabled={isProcessing}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                        >
+                            {isProcessing ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Processing…
+                                </>
+                            ) : (
+                                <>
+                                    <CreditCard className="h-4 w-4" />
+                                    Confirm Payment
+                                </>
+                            )}
+                        </AppButton>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

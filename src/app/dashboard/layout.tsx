@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -9,21 +9,34 @@ import {
     Shield,
     Users,
     LogOut,
-    Menu,
-    X,
     Bell,
-    // FileCheck2,
     PlusCircle,
     Search,
     CheckSquare,
     ChevronRight,
     Loader2,
 } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+    SidebarProvider,
+    Sidebar,
+    SidebarHeader,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarGroupLabel,
+    SidebarGroupContent,
+    SidebarMenu,
+    SidebarMenuItem,
+    SidebarMenuButton,
+    SidebarTrigger,
+    SidebarInset,
+} from '@/components/ui/sidebar';
 import { useAuth, UserRole } from '@/providers/AuthProvider';
-import { AppButton } from '@/components/shared/AppButton';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 interface NavItem {
     label: string;
@@ -34,7 +47,6 @@ interface NavItem {
 const navByRole: Record<UserRole, NavItem[]> = {
     TENANT: [
         { label: 'Overview', href: '/dashboard/tenant', icon: Home },
-        // { label: 'My Requests', href: '/dashboard/tenant/requests', icon: FileCheck2 },
         { label: 'Browse Properties', href: '/properties', icon: Search },
     ],
     LANDLORD: [
@@ -53,7 +65,6 @@ const navByRole: Record<UserRole, NavItem[]> = {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { user, logout, isLoading } = useAuth();
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     if (isLoading) {
         return (
@@ -67,114 +78,123 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const navigation = navByRole[activeRole] || navByRole.TENANT;
 
     return (
-        <div className="min-h-screen bg-background flex flex-col md:flex-row font-sans antialiased">
-            {/* Mobile Header */}
-            <header className="md:hidden flex items-center justify-between border-b border-border/80 bg-card/80 backdrop-blur-md px-4 py-3 sticky top-0 z-50">
-                <Link href="/" className="flex items-center gap-2.5 font-bold text-lg text-foreground">
-                    <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center text-primary-foreground">
-                        <Building2 className="h-4 w-4" />
-                    </div>
-                    <span>RentNest</span>
-                </Link>
-                <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                    {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                </Button>
-            </header>
+        <TooltipProvider>
 
-            {/* Sidebar Navigation */}
-            <aside
-                className={`${mobileMenuOpen ? 'block' : 'hidden'
-                    } md:block w-full md:w-72 border-r border-border/60 bg-card/50 backdrop-blur-xl p-5 flex flex-col justify-between shrink-0 z-40`}
-            >
-                <div className="space-y-6">
-                    {/* Logo */}
-                    <Link href="/" className="hidden md:flex items-center gap-3 px-2 py-1 font-bold text-xl text-foreground">
-                        <div className="h-9 w-9 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground">
-                            <Building2 className="h-5 w-5" />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="leading-none">RentNest</span>
-                            <span className="text-[10px] text-muted-foreground font-medium tracking-widest uppercase mt-1">
-                                {activeRole} Portal
-                            </span>
-                        </div>
-                    </Link>
+            <SidebarProvider>
+                <div className="flex min-h-screen w-full bg-background font-sans antialiased">
+                    {/* Shadcn Sidebar Component */}
+                    <Sidebar variant="inset" collapsible="icon">
+                        {/* Header: Logo */}
+                        <SidebarHeader className="border-b border-border/40 p-4">
+                            <Link href="/" className="flex items-center gap-3 font-bold text-lg text-foreground">
+                                <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shrink-0">
+                                    <Building2 className="h-5 w-5" />
+                                </div>
+                                <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+                                    <span className="leading-none text-base">RentNest</span>
+                                    <span className="text-[10px] text-muted-foreground font-medium tracking-widest uppercase mt-1">
+                                        {activeRole} Portal
+                                    </span>
+                                </div>
+                            </Link>
+                        </SidebarHeader>
 
-                    {/* Authenticated User Card */}
-                    <div className="rounded-2xl border border-border/80 bg-card p-3.5 flex items-center gap-3">
-                        <Avatar className="h-10 w-10 border border-primary/20">
-                            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-                                {user?.name?.[0] || activeRole[0]}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold truncate text-foreground">
-                                {user?.name || 'User Account'}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
-                            <div className="flex items-center gap-1.5 mt-1">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <Badge variant="secondary" className="text-[9px] font-bold uppercase bg-primary/10 text-primary px-1.5 py-0 border-0">
-                                    {activeRole}
-                                </Badge>
+                        {/* Content: User Info & Menu Items */}
+                        <SidebarContent className="px-2 py-4">
+                            {/* User Card */}
+                            <div className="mx-2 mb-4 p-3 rounded-xl border border-border/60 bg-card group-data-[collapsible=icon]:p-1.5 flex items-center gap-3">
+                                <Avatar className="h-9 w-9 border border-primary/20 shrink-0">
+                                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                                        {user?.name?.[0] || activeRole[0]}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+                                    <p className="text-xs font-semibold truncate text-foreground leading-tight">
+                                        {user?.name || 'User Account'}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        <Badge variant="secondary" className="text-[8px] font-bold uppercase bg-primary/10 text-primary px-1 py-0 border-0">
+                                            {activeRole}
+                                        </Badge>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
 
-                    {/* Role-filtered Nav Links */}
-                    <nav className="space-y-1 pt-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 mb-2">
-                            Navigation
-                        </p>
-                        {navigation.map((item) => {
-                            const Icon = item.icon;
-                            const isActive = pathname === item.href;
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${isActive
-                                        ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
-                                        : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
-                                        }`}
-                                >
-                                    <Icon className="h-4 w-4" />
-                                    <span>{item.label}</span>
-                                </Link>
-                            );
-                        })}
-                    </nav>
+                            {/* Navigation Group */}
+                            <SidebarGroup>
+                                <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Navigation
+                                </SidebarGroupLabel>
+                                <SidebarGroupContent>
+                                    <SidebarMenu>
+                                        {navigation.map((item) => {
+                                            const Icon = item.icon;
+                                            const isActive = pathname === item.href;
+                                            return (
+                                                <SidebarMenuItem key={item.href}>
+                                                    <SidebarMenuButton
+                                                        asChild
+                                                        isActive={isActive}
+                                                        tooltip={item.label}
+                                                        className={`rounded-xl px-3 py-2.5 transition-all ${isActive
+                                                            ? 'bg-primary text-primary-foreground font-semibold shadow-xs hover:bg-primary/90 hover:text-primary-foreground'
+                                                            : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+                                                            }`}
+                                                    >
+                                                        <Link href={item.href} className="flex items-center gap-3">
+                                                            <Icon className="h-4 w-4 shrink-0" />
+                                                            <span>{item.label}</span>
+                                                        </Link>
+                                                    </SidebarMenuButton>
+                                                </SidebarMenuItem>
+                                            );
+                                        })}
+                                    </SidebarMenu>
+                                </SidebarGroupContent>
+                            </SidebarGroup>
+                        </SidebarContent>
+
+                        {/* Footer: Logout */}
+                        <SidebarFooter className="border-t border-border/40 p-3">
+                            <SidebarMenu>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton
+                                        onClick={logout}
+                                        tooltip="Sign Out"
+                                        className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"
+                                    >
+                                        <LogOut className="h-4 w-4 shrink-0" />
+                                        <span>Sign Out</span>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            </SidebarMenu>
+                        </SidebarFooter>
+                    </Sidebar>
+
+                    {/* Main Content Area */}
+                    <SidebarInset className="flex flex-col flex-1 min-w-0">
+                        <header className="flex h-14 items-center justify-between border-b border-border/60 bg-card/30 backdrop-blur-md px-4 sm:px-8 sticky top-0 z-30">
+                            <div className="flex items-center gap-3">
+                                <SidebarTrigger />
+                                <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>RentNest</span>
+                                    <ChevronRight className="h-3 w-3" />
+                                    <span className="capitalize text-foreground font-medium">
+                                        {activeRole.toLowerCase()} Workspace
+                                    </span>
+                                </div>
+                            </div>
+                            <Button variant="outline" size="icon" className="rounded-xl border-border/80 h-9 w-9">
+                                <Bell className="h-4 w-4" />
+                            </Button>
+                        </header>
+
+                        <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">{children}</main>
+                    </SidebarInset>
                 </div>
-
-                {/* Sign Out Button */}
-                <div className="pt-4 border-t border-border/60">
-                    <AppButton
-                        variant="ghost"
-                        onClick={logout}
-                        className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl text-sm"
-                    >
-                        <LogOut className="h-4 w-4" />
-                        Sign Out
-                    </AppButton>
-                </div>
-            </aside>
-
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0">
-                <header className="hidden md:flex items-center justify-between border-b border-border/60 bg-card/30 backdrop-blur-md px-8 py-4 sticky top-0 z-30">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>RentNest</span>
-                        <ChevronRight className="h-3 w-3" />
-                        <span className="capitalize text-foreground font-medium">{activeRole.toLowerCase()} Workspace</span>
-                    </div>
-                    <Button variant="outline" size="icon" className="rounded-xl border-border/80">
-                        <Bell className="h-4 w-4" />
-                    </Button>
-                </header>
-
-                <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">{children}</main>
-            </div>
-        </div>
+            </SidebarProvider>
+        </TooltipProvider>
     );
 }

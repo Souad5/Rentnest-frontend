@@ -1,5 +1,6 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://rentnest-backend-five.vercel.app/api";
 /**
  * Structured API Error Response
  */
@@ -185,11 +186,6 @@ export const paymentsApi = {
       method: "POST",
       body: JSON.stringify({ rentalRequestId, paymentIntentId, amount }),
     }),
-
-  getPayments: () => fetcher<Array<Record<string, unknown>>>("/payments"),
-
-  getPaymentById: (id: string) =>
-    fetcher<Record<string, unknown>>(`/payments/${id}`),
 };
 
 // ==========================================
