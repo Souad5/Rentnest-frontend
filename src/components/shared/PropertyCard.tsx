@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Star, Tag } from 'lucide-react';
+import { Heart, Star, Tag, MapPin, BedDouble, Bath, Ruler } from 'lucide-react';
 import { Property } from '@/types/api';
+import { cn } from '@/lib/utils';
 
 interface PropertyCardProps {
     property: Property;
@@ -29,86 +30,98 @@ export default function PropertyCard({ property, priority = false }: PropertyCar
     };
 
     return (
-        <div className="group relative flex flex-col space-y-3 cursor-pointer bg-white rounded-t-2xl rounded-b-2xl">
-            {/* Image Container with Airbnb Micro-interactions */}
-            <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl bg-muted">
+        <div className="group relative flex flex-col cursor-pointer">
+            {/* Image Container */}
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-muted ring-1 ring-black/5 shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1">
                 <Image
                     src={imageUrl}
                     alt={property.title}
                     fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
                     priority={priority}
                 />
+                {/* Soft gradient scrim for badge legibility */}
+                <div className="absolute inset-x-0 top-0 h-16 bg-linear-to-b from-black/25 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
                 {/* Floating Wishlist Heart Button */}
                 <button
                     type="button"
                     onClick={handleWishlistToggle}
-                    aria-label="Save to wishlist"
-                    className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center transition-transform hover:scale-110 active:scale-95"
+                    aria-label={isLiked ? 'Remove from wishlist' : 'Save to wishlist'}
+                    aria-pressed={isLiked}
+                    className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/85 backdrop-blur-md shadow-md transition-all duration-200 hover:scale-110 hover:bg-white active:scale-95"
                 >
                     <Heart
-                        className={`h-6 w-6 stroke-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-colors ${isLiked ? 'fill-rose-500 stroke-rose-500' : 'fill-black/20'
-                            }`}
+                        className={cn(
+                            'h-[18px] w-[18px] stroke-neutral-800 transition-colors',
+                            isLiked ? 'fill-rose-500 stroke-rose-500' : 'fill-transparent',
+                        )}
                     />
                 </button>
 
-                {/* Top-Left Status Badge */}
+                {/* Top-Left Availability Badge */}
                 {!isAvailable && (
-                    <div className="absolute left-3 top-3 z-10">
-                        <span className="rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
-                            Rented
-                        </span>
-                    </div>
+                    <span className="absolute left-3 top-3 z-10 inline-flex items-center rounded-full bg-[#181818]/80 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-md">
+                        Rented
+                    </span>
                 )}
 
                 {/* Bottom Category Tag */}
                 {property.category?.name && (
-                    <div className="absolute bottom-3 left-3 z-10">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-neutral-900 shadow-sm backdrop-blur-md dark:bg-black/80 dark:text-white">
-                            <Tag className="h-3 w-3" />
-                            {property.category.name}
-                        </span>
-                    </div>
+                    <span className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-neutral-900 shadow-sm backdrop-blur-md">
+                        <Tag className="h-3 w-3" />
+                        {property.category.name}
+                    </span>
                 )}
+
+                {/* Rating Chip */}
+                <span className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-neutral-900 shadow-sm backdrop-blur-md">
+                    <Star className="h-3.5 w-3.5 fill-amber-400 stroke-amber-400" />
+                    4.95
+                </span>
             </div>
 
             {/* Content Details */}
-            <div className="space-y-1 text-sm p-4">
+            <div className="flex flex-1 flex-col space-y-1.5 px-1 pt-3.5">
                 {/* Location & Rating */}
-                <div className="flex items-center justify-between font-semibold text-foreground">
-                    <span className="truncate pr-2">
+                <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    <span className="truncate">
                         {property.location}
                         {property.address ? `, ${property.address}` : ''}
                     </span>
-                    <div className="flex items-center gap-1 text-xs shrink-0">
-                        <Star className="h-3.5 w-3.5 fill-amber-400 stroke-amber-400" />
-                        <span>4.95</span>
-                    </div>
-                </div>
+                </p>
 
                 {/* Title */}
-                <p className="line-clamp-1 text-muted-foreground font-normal">
+                <h3 className="line-clamp-1 pr-2 font-serif text-lg leading-snug text-[#1c1d1d]">
                     <Link href={`/properties/${property.id}`} className="focus:outline-none">
                         <span className="absolute inset-0 z-10" aria-hidden="true" />
                         {property.title}
                     </Link>
-                </p>
+                </h3>
 
                 {/* Specs Pill Summary */}
-                <p className="text-xs text-muted-foreground/80">
-                    {property.bedrooms ? `${property.bedrooms} beds` : 'Studio'}
-                    {property.bathrooms ? ` · ${property.bathrooms} baths` : ''}
-                    {property.sizeSqFt ? ` · ${property.sizeSqFt} sqft` : ''}
-                </p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                        <BedDouble className="h-3.5 w-3.5" /> {property.bedrooms ?? 0} beds
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                        <Bath className="h-3.5 w-3.5" /> {property.bathrooms ?? 0} baths
+                    </span>
+                    {property.sizeSqFt ? (
+                        <span className="inline-flex items-center gap-1">
+                            <Ruler className="h-3.5 w-3.5" /> {property.sizeSqFt} sqft
+                        </span>
+                    ) : null}
+                </div>
 
                 {/* Price Display */}
-                <div className="pt-0.5">
-                    <span className="font-semibold text-foreground text-base">
+                <div className="pt-1.5 mt-auto">
+                    <span className="font-serif text-xl font-semibold tracking-tight text-[#1c1d1d]">
                         ${formattedPrice}
                     </span>
-                    <span className="text-muted-foreground text-xs font-normal"> / month</span>
+                    <span className="text-xs text-muted-foreground"> / month</span>
                 </div>
             </div>
         </div>

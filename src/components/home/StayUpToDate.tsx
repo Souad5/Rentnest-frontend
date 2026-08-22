@@ -57,6 +57,7 @@ export function StayUpToDate() {
                                 src={article.img}
                                 alt={article.title}
                                 fill
+                                sizes="(max-width: 768px) 100vw, 33vw"
                                 className="object-cover group-hover:scale-105 transition-transform duration-500"
                             />
                         </div>

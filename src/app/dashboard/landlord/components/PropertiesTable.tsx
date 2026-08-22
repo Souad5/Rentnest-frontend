@@ -41,6 +41,7 @@ export function PropertiesTable({
                                     src={property.images?.[0] || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750'}
                                     alt={property.title}
                                     fill
+                                    sizes="56px"
                                     className="object-cover"
                                 />
                             </div>

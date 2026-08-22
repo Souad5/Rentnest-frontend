@@ -27,6 +27,7 @@ export function Hero() {
                         alt="Luxury Home & Apartment Rental"
                         fill
                         priority
+                        sizes="(max-width: 1280px) 100vw, 1280px"
                         className="object-cover object-center"
                     />
                 </motion.div>

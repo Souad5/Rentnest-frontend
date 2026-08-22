@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import PropertyCard from '@/components/shared/PropertyCard';
 import SkeletonCard from '@/components/shared/SkeletonCard';
 import { CustomSelect } from '@/components/shared/Select';
+import { AppButton } from '@/components/shared/AppButton';
+import { cn } from '@/lib/utils';
 
 const BASE_URL = (
     process.env.NEXT_PUBLIC_API_URL || 'https://rentnest-backend-five.vercel.app/api'
@@ -117,41 +119,45 @@ export default function PropertiesPage() {
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                            Explore Properties
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-neutral-500 mb-1.5">
+                            Rentals &amp; Properties
+                        </p>
+                        <h1 className="font-serif text-4xl sm:text-5xl font-normal tracking-tight text-[#1c1d1d] leading-none">
+                            Explore properties
                         </h1>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-sm text-muted-foreground mt-2 max-w-lg">
                             Browse verified rental apartments, villas, and studios across premier locations.
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground font-medium">
-                            Showing {filteredProperties.length}{' '}
+                        <span className="inline-flex items-center rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 shadow-sm">
+                            {filteredProperties.length}{' '}
                             {filteredProperties.length === 1 ? 'property' : 'properties'}
                         </span>
-                        <Button
+                        <AppButton
                             variant="outline"
                             size="icon"
                             onClick={fetchProperties}
                             title="Reload listings"
-                            className="h-8 w-8 rounded-lg"
+                            aria-label="Reload listings"
+                            className="h-9 w-9 rounded-full border-neutral-200 bg-white shadow-sm"
                         >
-                            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                        </Button>
+                            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        </AppButton>
                     </div>
                 </div>
 
                 {/* Filter Toolbar */}
-                <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-4">
+                <div className="rounded-[24px] border border-neutral-200/80 bg-white/80 backdrop-blur-sm p-4 shadow-sm space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {/* Search Input */}
                         <div className="relative">
-                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Search city, address, title..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9"
+                                className="pl-10 h-11 rounded-full border-neutral-200"
                             />
                         </div>
 
@@ -159,11 +165,13 @@ export default function PropertiesPage() {
                         <div className="relative">
                             <Input
                                 type="number"
+                                min={0}
                                 placeholder="Max Rent ($/mo)"
                                 value={maxPrice}
                                 onChange={(e) =>
                                     setMaxPrice(e.target.value ? Number(e.target.value) : '')
                                 }
+                                className="h-11 rounded-full border-neutral-200"
                             />
                         </div>
 
@@ -172,15 +180,18 @@ export default function PropertiesPage() {
                             value={categoryFilter}
                             onValueChange={setCategoryFilter}
                             options={CATEGORY_OPTIONS}
-                            className="w-full cursor-pointer"
+                            className="w-full h-11 cursor-pointer rounded-full"
                         />
 
                         {/* Reset Action */}
                         <Button
                             variant={hasActiveFilters ? 'default' : 'outline'}
                             onClick={resetFilters}
-                            className="w-full gap-2"
                             disabled={!hasActiveFilters}
+                            className={cn(
+                                'w-full gap-2 h-11 rounded-full text-xs font-semibold',
+                                hasActiveFilters && 'bg-[#1c1d1d] hover:bg-black text-white',
+                            )}
                         >
                             <SlidersHorizontal className="h-4 w-4" /> Reset Filters
                         </Button>
@@ -199,13 +210,13 @@ export default function PropertiesPage() {
 
                 {/* Property Cards Grid */}
                 {isLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <SkeletonCard />
-                        <SkeletonCard />
-                        <SkeletonCard />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <SkeletonCard key={i} />
+                        ))}
                     </div>
                 ) : filteredProperties.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
                         {filteredProperties.map((property, index) => (
                             <PropertyCard
                                 key={property.id}
@@ -215,18 +226,21 @@ export default function PropertiesPage() {
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-16 border border-dashed border-border rounded-2xl p-8 space-y-3">
-                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                            <Building className="h-6 w-6 text-muted-foreground" />
+                    <div className="text-center py-20 rounded-[32px] bg-white/80 border border-dashed border-neutral-300 p-8 space-y-3">
+                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#f4f3f0] ring-1 ring-neutral-200">
+                            <Building className="h-6 w-6 text-neutral-400" />
                         </div>
-                        <h3 className="text-lg font-semibold">No properties found</h3>
+                        <h3 className="font-serif text-xl text-[#1c1d1d]">No properties found</h3>
                         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                             Try adjusting your search criteria or clearing filters to view available listings.
                         </p>
                         {hasActiveFilters && (
-                            <Button variant="link" onClick={resetFilters}>
+                            <AppButton
+                                onClick={resetFilters}
+                                className="mt-2 bg-[#1c1d1d] hover:bg-black text-white rounded-full px-5 text-xs font-semibold"
+                            >
                                 Clear all filters
-                            </Button>
+                            </AppButton>
                         )}
                     </div>
                 )}
