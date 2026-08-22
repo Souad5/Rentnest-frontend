@@ -30,7 +30,7 @@ export interface RentalRequest {
     tenantName: string;
     tenantEmail: string;
     moveInDate: string;
-    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | string;
 }
 
 export default function LandlordRequestsPage() {
@@ -56,6 +56,9 @@ export default function LandlordRequestsPage() {
                 const tenant = (item.tenant || item.user || {}) as { name?: string; email?: string };
                 const property = (item.property || {}) as { title?: string };
 
+                // Safely cast and normalize to UPPERCASE string
+                const rawStatus = typeof item.status === 'string' ? item.status.toUpperCase() : 'PENDING';
+
                 return {
                     id: String(item.id || ''),
                     propertyTitle: property.title || 'Property',
@@ -68,7 +71,7 @@ export default function LandlordRequestsPage() {
                             year: 'numeric',
                         })
                         : 'N/A',
-                    status: (item.status as RentalRequest['status']) || 'PENDING',
+                    status: rawStatus,
                 };
             });
 
@@ -165,26 +168,40 @@ export default function LandlordRequestsPage() {
                 accessorKey: 'status',
                 header: 'Status',
                 cell: ({ row }) => {
-                    const status = row.original.status;
-                    return (
-                        <>
-                            {status === 'PENDING' && (
+                    const status = row.original.status?.toUpperCase();
+
+                    switch (status) {
+                        case 'PENDING':
+                            return (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                                     <Clock className="h-3 w-3" /> Pending
                                 </span>
-                            )}
-                            {status === 'APPROVED' && (
+                            );
+                        case 'APPROVED':
+                            return (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                     <Check className="h-3 w-3" /> Approved
                                 </span>
-                            )}
-                            {status === 'REJECTED' && (
+                            );
+                        case 'ACTIVE':
+                            return (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                    <Check className="h-3 w-3" /> Active
+                                </span>
+                            );
+                        case 'REJECTED':
+                            return (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
                                     <X className="h-3 w-3" /> Rejected
                                 </span>
-                            )}
-                        </>
-                    );
+                            );
+                        default:
+                            return (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border">
+                                    {status || 'N/A'}
+                                </span>
+                            );
+                    }
                 },
             },
             {
@@ -244,11 +261,12 @@ export default function LandlordRequestsPage() {
     const tableFilters: AppDataTableFilterOption[] = [
         {
             columnId: 'status',
-            placeholder: 'All Statuses',
+            placeholder: 'All Status',
             options: [
                 { label: 'Pending', value: 'PENDING' },
                 { label: 'Approved', value: 'APPROVED' },
                 { label: 'Rejected', value: 'REJECTED' },
+                { label: 'Active', value: 'ACTIVE' },
             ],
         },
     ];
