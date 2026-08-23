@@ -3,54 +3,115 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Building2, Upload } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+    ArrowLeft,
+    Save,
+    Building2,
+    Loader2,
+    AlertCircle,
+    ShieldAlert,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MOCK_PROPERTIES } from '@/constants/mockProperties';
+import RoleGuard from '@/components/guard/RoleGuard';
 import { AppInput } from '@/components/shared/AppInput';
+import { useAuth } from '@/providers/AuthProvider';
+import { propertiesApi, landlordApi, ApiProperty, ApiError } from '@/lib/api';
 
 interface EditPropertyPageProps {
     params: Promise<{ id: string }>;
 }
 
-export default function EditPropertyPage({ params }: EditPropertyPageProps) {
-    const { id } = use(params);
-    const router = useRouter();
+interface EditFormData {
+    title: string;
+    location: string;
+    address: string;
+    price: number;
+    description: string;
+    categoryId: string;
+    isAvailable: 'true' | 'false';
+    imageUrl: string;
+}
 
-    const [formData, setFormData] = useState({
+function EditPropertyForm({ id }: { id: string }) {
+    const router = useRouter();
+    const { user } = useAuth();
+
+    const [formData, setFormData] = useState<EditFormData>({
         title: '',
         location: '',
         address: '',
         price: 0,
-        bedrooms: 1,
-        bathrooms: 1,
-        sizeSqFt: 500,
         description: '',
+        categoryId: '',
         isAvailable: 'true',
         imageUrl: '',
     });
-
+    const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
 
     useEffect(() => {
-        const property = MOCK_PROPERTIES.find((p) => p.id === id);
-        if (property) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setFormData({
-                title: property.title,
-                location: property.location,
-                address: property.address || property.location,
-                price: property.price,
-                bedrooms: property.bedrooms ?? 1,
-                bathrooms: property.bathrooms ?? 1,
-                sizeSqFt: property.sizeSqFt ?? 500,
-                description: property.description,
-                isAvailable: property.isAvailable !== false ? 'true' : 'false',
-                imageUrl: property.images?.[0] || '',
-            });
-        }
-        setIsLoading(false);
-    }, [id]);
+        const load = async () => {
+            setIsLoading(true);
+            setLoadError(null);
+            try {
+                const [propertyRes, categoriesRes] = await Promise.all([
+                    propertiesApi.getById(id),
+                    propertiesApi.getCategories().catch(() => null),
+                ]);
+
+                const propertyResData = propertyRes as unknown as
+                    | { data?: ApiProperty }
+                    | ApiProperty;
+                const property: ApiProperty = ('data' in propertyResData &&
+                    propertyResData.data
+                    ? propertyResData.data
+                    : propertyResData) as ApiProperty;
+
+                if (categoriesRes) {
+                    const catResData = categoriesRes as unknown as
+                        | { data?: Array<{ id: string; name: string }> }
+                        | Array<{ id: string; name: string }>;
+                    const list = Array.isArray(catResData) ? catResData : catResData.data || [];
+                    setCategories(list);
+                }
+
+                // Frontend ownership gate mirrors the backend's landlordId
+                // check; the API remains authoritative either way.
+                if (user && property.landlordId !== user.id && property.landlord?.id !== user.id) {
+                    throw new Error('You can only edit your own property listings.');
+                }
+
+                setFormData({
+                    title: property.title || '',
+                    location: property.location || '',
+                    address: property.address || property.location || '',
+                    price: Number(property.price) || 0,
+                    description: property.description || '',
+                    categoryId: property.categoryId || property.category?.id || '',
+                    isAvailable: property.isAvailable === false ? 'false' : 'true',
+                    imageUrl: property.imageUrl || '',
+                });
+            } catch (err) {
+                if (err instanceof ApiError && err.status === 404) {
+                    setLoadError('This property does not exist.');
+                } else {
+                    setLoadError(
+                        err instanceof Error
+                            ? err.message
+                            : 'Failed to load property details.'
+                    );
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        load();
+    }, [id, user]);
 
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -62,16 +123,77 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Insert API save call here
-        router.push('/dashboard/landlord');
+    const validate = (): string | null => {
+        if (formData.title.trim().length < 3) return 'Title must be at least 3 characters long.';
+        if (formData.description.trim().length < 10)
+            return 'Description must be at least 10 characters long.';
+        if (formData.address.trim().length < 3) return 'Address is required.';
+        if (formData.location.trim().length < 2) return 'Location is required.';
+        if (!(Number(formData.price) > 0)) return 'Price must be greater than 0.';
+        const url = formData.imageUrl.trim();
+        if (url && !/^https?:\/\/.+/.test(url)) return 'Image URL must be a valid URL.';
+        return null;
     };
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isSaving) return;
+
+        const validationError = validate();
+        if (validationError) {
+            setFormError(validationError);
+            return;
+        }
+        setFormError(null);
+        setIsSaving(true);
+
+        try {
+            // PUT /properties/landlord/:id accepts every field as optional;
+            // only send what this form manages so unrelated data stays intact.
+            await landlordApi.updateProperty(id, {
+                title: formData.title.trim(),
+                description: formData.description.trim(),
+                address: formData.address.trim(),
+                location: formData.location.trim(),
+                price: Number(formData.price),
+                ...(formData.categoryId ? { categoryId: formData.categoryId } : {}),
+                isAvailable: formData.isAvailable === 'true',
+                ...(formData.imageUrl.trim()
+                    ? { imageUrl: formData.imageUrl.trim() }
+                    : { imageUrl: null }),
+            });
+
+            toast.success('Property updated');
+            router.push('/dashboard/landlord');
+        } catch (err) {
+            const message =
+                err instanceof ApiError ? err.message : 'Failed to save changes. Please try again.';
+            setFormError(message);
+            toast.error(message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // Frontend ownership gate mirrors the backend's landlordId check; the API
+    // remains authoritative and will reject foreign ids regardless.
     if (isLoading) {
         return (
-            <div className="py-12 text-center text-sm text-muted-foreground">
-                Loading property details...
+            <div className="py-12 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading property details...
+            </div>
+        );
+    }
+
+    if (loadError) {
+        return (
+            <div className="max-w-md mx-auto my-12 text-center p-8 border border-border rounded-2xl bg-card space-y-4">
+                <ShieldAlert className="h-12 w-12 text-destructive mx-auto" />
+                <h2 className="text-lg font-bold text-foreground">Cannot edit listing</h2>
+                <p className="text-xs text-muted-foreground">{loadError}</p>
+                <Button asChild size="sm" variant="outline">
+                    <Link href="/dashboard/landlord">Back to Dashboard</Link>
+                </Button>
             </div>
         );
     }
@@ -95,6 +217,13 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                 </CardHeader>
 
                 <CardContent>
+                    {formError && (
+                        <div className="mb-6 p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            <span>{formError}</span>
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Title */}
                         <div className="space-y-2">
@@ -132,8 +261,8 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                             </div>
                         </div>
 
-                        {/* Price, Bedrooms, Bathrooms, SqFt */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {/* Price & Category */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Monthly Rent ($)</label>
                                 <AppInput
@@ -146,38 +275,20 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Bedrooms</label>
-                                <AppInput
-                                    type="number"
-                                    name="bedrooms"
-                                    value={formData.bedrooms}
+                                <label className="text-sm font-medium text-foreground">Category</label>
+                                <select
+                                    name="categoryId"
+                                    value={formData.categoryId}
                                     onChange={handleChange}
-                                    min={0}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Bathrooms</label>
-                                <AppInput
-                                    type="number"
-                                    name="bathrooms"
-                                    value={formData.bathrooms}
-                                    onChange={handleChange}
-                                    min={0}
-                                    step="0.5"
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">Area (Sq Ft)</label>
-                                <AppInput
-                                    type="number"
-                                    name="sizeSqFt"
-                                    value={formData.sizeSqFt}
-                                    onChange={handleChange}
-                                    min={0}
-                                    required
-                                />
+                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                                >
+                                    <option value="">Keep current</option>
+                                    {categories.map((cat) => (
+                                        <option key={cat.id} value={cat.id}>
+                                            {cat.name}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 
@@ -198,18 +309,30 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
 
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-foreground">Cover Image URL</label>
-                                <div className="relative">
-                                    <Upload className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10" />
-                                    <AppInput
-                                        name="imageUrl"
-                                        value={formData.imageUrl}
-                                        onChange={handleChange}
-                                        placeholder="https://..."
-                                        className="pl-9"
-                                    />
-                                </div>
+                                <AppInput
+                                    name="imageUrl"
+                                    value={formData.imageUrl}
+                                    onChange={handleChange}
+                                    placeholder="https://..."
+                                />
                             </div>
                         </div>
+
+                        {/* Live image preview */}
+                        {formData.imageUrl.trim() !== '' &&
+                            /^https?:\/\/.+/.test(formData.imageUrl.trim()) && (
+                                <div className="space-y-1.5">
+                                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                                        Preview
+                                    </p>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                        src={formData.imageUrl.trim()}
+                                        alt="Cover preview"
+                                        className="h-36 w-full max-w-md object-cover rounded-xl border border-border"
+                                    />
+                                </div>
+                            )}
 
                         {/* Description */}
                         <div className="space-y-2">
@@ -230,13 +353,31 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                             <Button asChild variant="outline">
                                 <Link href="/dashboard/landlord">Cancel</Link>
                             </Button>
-                            <Button type="submit" className="gap-2">
-                                <Save className="h-4 w-4" /> Save Changes
+                            <Button type="submit" disabled={isSaving} className="gap-2">
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="h-4 w-4" /> Save Changes
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </form>
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+export default function EditPropertyPage({ params }: EditPropertyPageProps) {
+    const { id } = use(params);
+
+    return (
+        <RoleGuard allowedRoles={['LANDLORD']}>
+            <EditPropertyForm id={id} />
+        </RoleGuard>
     );
 }

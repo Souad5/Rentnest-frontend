@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 import {
     Building2,
     ArrowLeft,
@@ -29,9 +30,7 @@ import {
 import { PropertyLocationFields } from './components/PropertyLocationFields';
 import { PropertyPricingFields } from './components/PropertyPricingFields';
 import { PropertyImageFields } from './components/PropertyImageFields';
-const BASE_URL = (
-    process.env.NEXT_PUBLIC_API_URL || 'https://rentnest-backend-five.vercel.app/api'
-).replace(/\/$/, '');
+import { propertiesApi, landlordApi } from '@/lib/api';
 
 export default function CreatePropertyPage() {
     const router = useRouter();
@@ -45,7 +44,6 @@ export default function CreatePropertyPage() {
         handleSubmit,
         setValue,
         watch,
-        control,
         formState: { errors },
     } = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
@@ -57,7 +55,7 @@ export default function CreatePropertyPage() {
             price: 0,
             categoryId: DEFAULT_CATEGORIES[0].id,
             isAvailable: true,
-            images: [{ url: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750' }],
+            imageUrl: '',
         },
     });
 
@@ -67,13 +65,13 @@ export default function CreatePropertyPage() {
     useEffect(() => {
         async function loadCategories() {
             try {
-                const res = await fetch(`${BASE_URL}/categories`);
-                if (res.ok) {
-                    const data = await res.json();
-                    const categoryList: Category[] = Array.isArray(data) ? data : data.data || [];
-                    if (categoryList.length > 0) {
-                        setCategories(categoryList);
-                    }
+                const res = await propertiesApi.getCategories();
+                const resData = res as unknown as { data?: Category[] } | Category[];
+                const categoryList: Category[] = Array.isArray(resData)
+                    ? resData
+                    : resData.data || [];
+                if (categoryList.length > 0) {
+                    setCategories(categoryList);
                 }
             } catch (err) {
                 console.error('API failed, using fallback categories:', err);
@@ -87,49 +85,31 @@ export default function CreatePropertyPage() {
         setErrorMessage(null);
         setSuccessMessage(null);
 
-        const token =
-            typeof window !== 'undefined'
-                ? localStorage.getItem('token') || localStorage.getItem('accessToken')
-                : '';
-
+        // Backend contract: imageUrl optional; isAvailable is not accepted on
+        // create (defaults to true server-side) so it is not sent.
         const payload = {
-            ...data,
             title: data.title.trim(),
             description: data.description.trim(),
             address: data.address.trim(),
             location: data.location.trim(),
-            images: data.images.map((img) => img.url.trim()),
+            price: data.price,
+            categoryId: data.categoryId,
+            ...(data.imageUrl && data.imageUrl.trim() ? { imageUrl: data.imageUrl.trim() } : {}),
         };
 
         try {
-            const response = await fetch(`${BASE_URL}/properties/landlord`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                body: JSON.stringify(payload),
-            });
+            await landlordApi.createProperty(payload);
 
-            const result = await response.json();
-
-            if (!response.ok) {
-                if (result.errorDetails && Array.isArray(result.errorDetails)) {
-                    const details = result.errorDetails
-                        .map((err: { message: string }) => err.message)
-                        .join(' | ');
-                    throw new Error(details || result.message);
-                }
-                throw new Error(result.message || 'Failed to create property listing.');
-            }
-
+            toast.success('Property created');
             setSuccessMessage('Property listed successfully!');
             setTimeout(() => {
                 router.push('/dashboard/landlord');
             }, 1500);
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';
+            let msg = 'An unexpected error occurred.';
+            if (err instanceof Error) msg = err.message;
             setErrorMessage(msg);
+            toast.error(msg);
         } finally {
             setSubmitting(false);
         }
@@ -229,7 +209,7 @@ export default function CreatePropertyPage() {
                             categories={categories}
                         />
 
-                        <PropertyImageFields control={control} register={register} errors={errors} />
+                        <PropertyImageFields register={register} errors={errors} />
 
                         {/* Submit Actions */}
                         <div className="pt-4 border-t border-border/60 flex items-center justify-end gap-3">

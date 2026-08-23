@@ -34,6 +34,7 @@ export interface Property {
   category?: PropertyCategory;
   landlordId?: string;
   images?: string[];
+  imageUrl?: string | null;
   isAvailable?: boolean;
   bedrooms?: number;
   bathrooms?: number;

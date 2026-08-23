@@ -53,6 +53,7 @@ export interface PropertyDetail {
     category?: CategoryData;
     landlord?: LandlordData;
     images?: string[];
+    imageUrl?: string | null;
 }
 
 const DEFAULT_AMENITIES = [
@@ -93,9 +94,13 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
         notFound();
     }
 
+    const galleryImages = [
+        ...(property.imageUrl ? [property.imageUrl] : []),
+        ...(property.images ?? []),
+    ];
     const images =
-        property.images && property.images.length > 0
-            ? property.images
+        galleryImages.length > 0
+            ? galleryImages
             : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750'];
 
     const isAvailable = property.isAvailable ?? true;

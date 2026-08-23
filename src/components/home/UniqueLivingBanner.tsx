@@ -39,6 +39,7 @@ export function UniqueLivingBanner() {
                                 src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=300&q=80"
                                 alt="Modern Apartment Studio"
                                 fill
+                                sizes="112px"
                                 className="object-cover"
                             />
                         </motion.div>
@@ -52,6 +53,7 @@ export function UniqueLivingBanner() {
                                 src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=300&q=80"
                                 alt="Luxury Home Rental"
                                 fill
+                                sizes="80px"
                                 className="object-cover"
                             />
                         </motion.div>

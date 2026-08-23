@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
@@ -18,7 +18,8 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { rentalsApi, paymentsApi, ApiError } from '@/lib/api';
-import { CheckoutForm } from './CheckoutForm';
+import { useAuth } from '@/providers/AuthProvider';
+import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 
 // Initialize Stripe outside component render
 const stripePromise = loadStripe(
@@ -35,12 +36,15 @@ interface RentalRequestDetail {
         location?: string;
         price: number;
         images?: string[];
+        imageUrl?: string | null;
     };
 }
 
 export default function TenantPaymentPage() {
     const params = useParams();
+    const router = useRouter();
     const requestId = params.id as string;
+    const { token, isLoading: authLoading } = useAuth();
 
     const [requestDetail, setRequestDetail] = useState<RentalRequestDetail | null>(null);
     const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -48,28 +52,51 @@ export default function TenantPaymentPage() {
     const [error, setError] = useState<string | null>(null);
 
     const initCheckout = useCallback(async () => {
-        if (!requestId) return;
+        if (!requestId || !token) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         setError(null);
 
         try {
-            // 1. Fetch Request details to get amount and property info
+            // 1. Fetch Request details for the order summary
             const rentalResponse = await rentalsApi.getById(requestId);
             const rental = (rentalResponse as { data?: RentalRequestDetail }).data || rentalResponse;
 
             const reqData = rental as RentalRequestDetail;
             setRequestDetail(reqData);
 
-            const amountToPay = reqData.property?.price || 0;
-
             if (reqData.status !== 'APPROVED') {
-                setError('This rental request is not approved for payment.');
+                setError(
+                    reqData.status === 'ACTIVE'
+                        ? 'This rental request is already paid and active.'
+                        : 'This rental request is not approved for payment.'
+                );
                 setLoading(false);
                 return;
             }
 
-            // 2. Initialize PaymentIntent on backend
-            const paymentRes = await paymentsApi.createPaymentIntent(requestId, amountToPay);
+            // 2. Initialize PaymentIntent on backend (amount determined server-side).
+            //    The backend reuses an existing pending session, so the returned
+            //    secret always matches the persisted payment record.
+            const paymentRes = await paymentsApi.createPaymentIntent(requestId);
+
+            if (paymentRes.data?.alreadyPaid) {
+                // Stripe already settled this rental: verify via the success page.
+                try {
+                    const history = await paymentsApi.getPayments();
+                    const match = history.data?.find((p) => p.rentalRequestId === requestId);
+                    router.push(
+                        match
+                            ? `/payment/success?payment=${encodeURIComponent(match.id)}&request=${encodeURIComponent(requestId)}`
+                            : '/dashboard/tenant'
+                    );
+                } catch {
+                    router.push('/dashboard/tenant');
+                }
+                return;
+            }
 
             if (paymentRes.data?.clientSecret) {
                 setClientSecret(paymentRes.data.clientSecret);
@@ -85,18 +112,34 @@ export default function TenantPaymentPage() {
         } finally {
             setLoading(false);
         }
-    }, [requestId]);
+    }, [requestId, token, router]);
 
     useEffect(() => {
+        if (authLoading) return;
         // eslint-disable-next-line react-hooks/set-state-in-effect
         initCheckout();
-    }, [initCheckout]);
+    }, [initCheckout, authLoading]);
 
-    if (loading) {
+    if (authLoading || loading) {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-3">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="text-sm text-muted-foreground">Preparing secure checkout environment...</p>
+            </div>
+        );
+    }
+
+    if (!token) {
+        return (
+            <div className="max-w-md mx-auto my-12 text-center p-8 border border-border rounded-2xl bg-card shadow-xs space-y-4">
+                <ShieldAlert className="h-12 w-12 text-destructive mx-auto" />
+                <h2 className="text-lg font-bold text-foreground">Sign in required</h2>
+                <p className="text-xs text-muted-foreground">
+                    You need to be signed in as a tenant to access this payment.
+                </p>
+                <Button asChild size="sm" variant="outline">
+                    <Link href="/login">Sign In</Link>
+                </Button>
             </div>
         );
     }
@@ -108,7 +151,7 @@ export default function TenantPaymentPage() {
                 <h2 className="text-lg font-bold text-foreground">Checkout Unavailable</h2>
                 <p className="text-xs text-muted-foreground">{error || 'Rental details not found.'}</p>
                 <Button asChild size="sm" variant="outline">
-                    <Link href="/dashboard/tenant/requests">Return to Requests</Link>
+                    <Link href="/dashboard/tenant">Return to Requests</Link>
                 </Button>
             </div>
         );
@@ -121,7 +164,7 @@ export default function TenantPaymentPage() {
             {/* Back Button */}
             <div>
                 <Button variant="ghost" asChild className="gap-2 text-muted-foreground px-0 hover:bg-transparent">
-                    <Link href="/dashboard/tenant/requests">
+                    <Link href="/dashboard/tenant">
                         <ArrowLeft className="h-4 w-4" /> Back to Requests
                     </Link>
                 </Button>
@@ -175,10 +218,10 @@ export default function TenantPaymentPage() {
                         <div className="space-y-3">
                             <div className="flex items-start gap-3">
                                 <div className="h-12 w-12 rounded-xl bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden">
-                                    {requestDetail.property?.images?.[0] ? (
+                                    {requestDetail.property?.imageUrl || requestDetail.property?.images?.[0] ? (
                                         // eslint-disable-next-line @next/next/no-img-element
                                         <img
-                                            src={requestDetail.property.images[0]}
+                                            src={requestDetail.property.imageUrl || requestDetail.property.images![0]}
                                             alt={requestDetail.property.title}
                                             className="h-full w-full object-cover"
                                         />

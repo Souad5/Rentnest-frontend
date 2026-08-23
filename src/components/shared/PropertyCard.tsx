@@ -15,9 +15,10 @@ export default function PropertyCard({ property, priority = false }: PropertyCar
     const [isLiked, setIsLiked] = useState(false);
 
     const imageUrl =
-        property.images && property.images.length > 0
+        property.imageUrl ||
+        (property.images && property.images.length > 0
             ? property.images[0]
-            : 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80';
+            : 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80');
 
     const isAvailable = property.isAvailable ?? true;
     const formattedPrice = new Intl.NumberFormat('en-US').format(property.price || 0);
