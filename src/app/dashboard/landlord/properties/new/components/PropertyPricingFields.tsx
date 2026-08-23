@@ -2,7 +2,7 @@
 
 import { UseFormRegister, UseFormSetValue, UseFormWatch, FieldErrors } from 'react-hook-form';
 import { DollarSign, Tag, ChevronDown, CheckSquare, Square } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { AppInput } from '@/components/shared/AppInput';
 import { AppDropdown, AppDropdownItem } from '@/components/shared/AppDropdown';
 import { AppButton } from '@/components/shared/AppButton';
 import { PropertyFormValues, Category } from '@/schemas/property.schema';
@@ -40,7 +40,7 @@ export function PropertyPricingFields({
                     <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                         <DollarSign className="h-3.5 w-3.5 text-primary" /> Monthly Rent ($)
                     </label>
-                    <Input
+                    <AppInput
                         type="number"
                         {...register('price')}
                         placeholder="e.g. 850"

@@ -1,8 +1,9 @@
 // src/app/dashboard/landlord/requests/page.tsx
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import {
     ArrowLeft,
     Check,
@@ -14,6 +15,9 @@ import {
     RefreshCw,
     AlertCircle,
     ShieldAlert,
+    Home,
+    CheckCheck,
+    CreditCard,
 } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -22,7 +26,11 @@ import {
     AppDataTable,
     type AppDataTableFilterOption,
 } from '@/components/shared/AppDataTable';
+import RoleGuard from '@/components/guard/RoleGuard';
 import { landlordApi, ApiError } from '@/lib/api';
+
+// Mirrors the backend's RequestStatus enum (prisma/schema.prisma).
+export type RentalRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'COMPLETED';
 
 export interface RentalRequest {
     id: string;
@@ -30,10 +38,20 @@ export interface RentalRequest {
     tenantName: string;
     tenantEmail: string;
     moveInDate: string;
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | string;
+    createdAt: string;
+    paymentStatus: string | null;
+    status: RentalRequestStatus;
 }
 
 export default function LandlordRequestsPage() {
+    return (
+        <RoleGuard allowedRoles={['LANDLORD']}>
+            <LandlordRequestsTable />
+        </RoleGuard>
+    );
+}
+
+function LandlordRequestsTable() {
     const [requests, setRequests] = useState<RentalRequest[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -55,6 +73,7 @@ export default function LandlordRequestsPage() {
             const mappedRequests: RentalRequest[] = rawData.map((item: Record<string, unknown>) => {
                 const tenant = (item.tenant || item.user || {}) as { name?: string; email?: string };
                 const property = (item.property || {}) as { title?: string };
+                const payment = item.payment as { status?: string } | null | undefined;
 
                 // Safely cast and normalize to UPPERCASE string
                 const rawStatus = typeof item.status === 'string' ? item.status.toUpperCase() : 'PENDING';
@@ -71,7 +90,16 @@ export default function LandlordRequestsPage() {
                             year: 'numeric',
                         })
                         : 'N/A',
-                    status: rawStatus,
+                    createdAt: item.createdAt
+                        ? new Date(String(item.createdAt)).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                        })
+                        : 'N/A',
+                    paymentStatus:
+                        payment && typeof payment.status === 'string' ? payment.status : null,
+                    status: (item.status as RentalRequest['status']) || 'PENDING',
                 };
             });
 
@@ -92,9 +120,14 @@ export default function LandlordRequestsPage() {
         fetchRequests();
     }, [fetchRequests]);
 
-    // Optimistic Status Update with Rollback
+    // Status update against PATCH /landlord/requests/:id with rollback on
+    // failure. The in-flight refs block duplicate submissions even if the
+    // buttons' disabled state lags a render behind rapid clicks.
+    const updatingRef = useRef(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const handleUpdateStatus = async (id: string, newStatus: 'APPROVED' | 'REJECTED') => {
+        if (updatingRef.current) return;
+        updatingRef.current = true;
         setUpdatingId(id);
         setError(null);
 
@@ -107,18 +140,30 @@ export default function LandlordRequestsPage() {
 
         try {
             await landlordApi.updateRequestStatus(id, newStatus);
+
+            toast.success(
+                newStatus === 'APPROVED' ? 'Request Approved' : 'Request Rejected',
+                {
+                    description:
+                        newStatus === 'APPROVED'
+                            ? 'The tenant can now proceed to payment.'
+                            : 'The tenant has been notified of your decision.',
+                }
+            );
         } catch (err) {
             console.error('Failed to update request status:', err);
 
             // Rollback to prior snapshot
             setRequests(previousRequests);
 
-            if (err instanceof ApiError) {
-                setError(`Failed to update status: ${err.message}`);
-            } else {
-                setError('Failed to update status. Reverting changes...');
-            }
+            const message =
+                err instanceof ApiError
+                    ? `Failed to update status: ${err.message}`
+                    : 'Failed to update status. Reverting changes...';
+            setError(message);
+            toast.error(message);
         } finally {
+            updatingRef.current = false;
             setUpdatingId(null);
         }
     };
@@ -168,40 +213,65 @@ export default function LandlordRequestsPage() {
                 accessorKey: 'status',
                 header: 'Status',
                 cell: ({ row }) => {
-                    const status = row.original.status?.toUpperCase();
-
+                    const status = row.original.status;
+                    const badgeClass =
+                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border';
                     switch (status) {
                         case 'PENDING':
                             return (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <span className={`${badgeClass} bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20`}>
                                     <Clock className="h-3 w-3" /> Pending
                                 </span>
                             );
                         case 'APPROVED':
                             return (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                <span className={`${badgeClass} bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20`}>
                                     <Check className="h-3 w-3" /> Approved
                                 </span>
                             );
                         case 'ACTIVE':
                             return (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                                    <Check className="h-3 w-3" /> Active
+                                <span className={`${badgeClass} bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20`}>
+                                    <Home className="h-3 w-3" /> Active Lease
+                                </span>
+                            );
+                        case 'COMPLETED':
+                            return (
+                                <span className={`${badgeClass} bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20`}>
+                                    <CheckCheck className="h-3 w-3" /> Completed
                                 </span>
                             );
                         case 'REJECTED':
                             return (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                <span className={`${badgeClass} bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20`}>
                                     <X className="h-3 w-3" /> Rejected
                                 </span>
                             );
                         default:
-                            return (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border">
-                                    {status || 'N/A'}
-                                </span>
-                            );
+                            return <span className="text-xs text-muted-foreground">{status}</span>;
                     }
+                },
+            },
+            {
+                id: 'payment',
+                header: 'Payment',
+                cell: ({ row }) => {
+                    const paymentStatus = row.original.paymentStatus;
+                    if (paymentStatus === 'COMPLETED') {
+                        return (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                <CreditCard className="h-3 w-3" /> Paid
+                            </span>
+                        );
+                    }
+                    if (paymentStatus === 'PENDING') {
+                        return (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                <CreditCard className="h-3 w-3" /> Awaiting
+                            </span>
+                        );
+                    }
+                    return <span className="text-xs text-muted-foreground">—</span>;
                 },
             },
             {
@@ -265,6 +335,8 @@ export default function LandlordRequestsPage() {
             options: [
                 { label: 'Pending', value: 'PENDING' },
                 { label: 'Approved', value: 'APPROVED' },
+                { label: 'Active Lease', value: 'ACTIVE' },
+                { label: 'Completed', value: 'COMPLETED' },
                 { label: 'Rejected', value: 'REJECTED' },
                 { label: 'Active', value: 'ACTIVE' },
             ],
@@ -296,10 +368,11 @@ export default function LandlordRequestsPage() {
             {/* Header */}
             <div>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                    Incoming Rental Requests
+                    Rental Requests &amp; Tenant History
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                    Review tenant requests for your properties. Approved requests enable tenants to proceed to checkout.
+                    Review tenant applications for your properties and track every request from
+                    approval through payment and active lease.
                 </p>
             </div>
 

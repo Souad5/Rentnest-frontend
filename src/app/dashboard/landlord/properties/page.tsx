@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/providers/AuthProvider';
-import { propertiesApi, ApiProperty } from '@/lib/api';
-import { Loader2, Building2, Plus } from 'lucide-react';
+import { landlordApi, propertiesApi, ApiProperty, ApiError } from '@/lib/api';
+import { Loader2, Building2, Plus, AlertCircle } from 'lucide-react';
 import { AppButton } from '@/components/shared/AppButton';
 import Link from 'next/link';
 
@@ -11,33 +11,49 @@ export default function LandlordPropertiesPage() {
     const { user, isLoading: authLoading } = useAuth();
     const [properties, setProperties] = useState<ApiProperty[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchLandlordProperties = async () => {
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+    const fetchLandlordProperties = useCallback(async () => {
+        if (!user?.id) return;
+        try {
+            setLoading(true);
+            setError(null);
+            // Prefer the authenticated portfolio endpoint (includes rented-out
+            // listings); fall back to the public listing for older deploys.
+            let mine: ApiProperty[];
             try {
-                setLoading(true);
-                // Fetch public properties and filter by logged-in landlord ID
-                const response = await propertiesApi.getAll();
-                const resData = response as unknown as { data?: ApiProperty[] } | ApiProperty[];
-                const allProperties = Array.isArray(resData) ? resData : resData.data || [];
-
-                if (user?.id) {
-                    const myProperties = allProperties.filter(
+                const res = await landlordApi.getMyProperties();
+                mine = res.data ?? [];
+            } catch (err) {
+                if (err instanceof ApiError && err.status === 404) {
+                    const response = await propertiesApi.getAll();
+                    const resData = response as unknown as
+                        | { data?: ApiProperty[] }
+                        | ApiProperty[];
+                    const all = Array.isArray(resData) ? resData : resData.data || [];
+                    mine = all.filter(
                         (p) => p.landlordId === user.id || p.landlord?.id === user.id
                     );
-                    setProperties(myProperties);
+                } else {
+                    throw err;
                 }
-            } catch (err) {
-                console.error('Failed to load landlord listings:', err);
-            } finally {
-                setLoading(false);
             }
-        };
-
-        if (user) {
-            fetchLandlordProperties();
+            setProperties(mine);
+        } catch (err) {
+            console.error('Failed to load landlord listings:', err);
+            setError(
+                err instanceof Error ? err.message : 'Failed to load your property listings.'
+            );
+        } finally {
+            setLoading(false);
         }
-    }, [user]);
+    }, [user?.id]);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        fetchLandlordProperties();
+    }, [fetchLandlordProperties]);
 
     if (authLoading || loading) {
         return (
@@ -62,6 +78,18 @@ export default function LandlordPropertiesPage() {
                     </AppButton>
                 </Link>
             </div>
+
+            {error && (
+                <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        <span>{error}</span>
+                    </div>
+                    <AppButton variant="outline" size="sm" onClick={fetchLandlordProperties} className="h-8 text-xs">
+                        Retry
+                    </AppButton>
+                </div>
+            )}
 
             {properties.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

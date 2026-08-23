@@ -43,11 +43,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const logout = useCallback(() => {
         localStorage.removeItem('token');
+        // Clear both mirrored cookies so the middleware gate cannot admit or
+        // misroute a session that no longer exists.
         document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         setUser(null);
         setToken(null);
         router.push('/login');
     }, [router]);
+
+    // Middleware gates /dashboard/{role}/* off plain cookies; mirror the role
+    // alongside the token so protected routes resolve for the right profile.
+    const mirrorAuthCookies = useCallback((authToken: string, role: UserRole) => {
+        document.cookie = `token=${authToken}; path=/; max-age=86400`;
+        document.cookie = `role=${role}; path=/; max-age=86400`;
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -57,6 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             const storedToken = localStorage.getItem('token');
             if (!storedToken) {
+                // Reconcile dual-tracked auth: drop stale mirrored cookies so
+                // the middleware gate cannot admit a session with no token.
+                document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                document.cookie = 'role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
                 if (isMounted) setIsLoading(false);
                 return;
             }
@@ -78,6 +92,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (isMounted) {
                     setToken(storedToken);
                     setUser(userData);
+                    // Refresh mirrored cookies (same TTL as login) so reloads
+                    // keep passing the middleware role gates.
+                    mirrorAuthCookies(storedToken, userData.role);
                 }
             } catch {
                 if (isMounted) logout();
@@ -91,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => {
             isMounted = false;
         };
-    }, [logout]);
+    }, [logout, mirrorAuthCookies]);
 
     const login = async (credentials: Record<string, unknown>) => {
         setIsLoading(true);
@@ -101,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const authToken = res.data.token;
 
             localStorage.setItem('token', authToken);
-            document.cookie = `token=${authToken}; path=/; max-age=86400`;
+            mirrorAuthCookies(authToken, authUser.role);
             setToken(authToken);
             setUser(authUser);
 
@@ -121,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const authToken = res.data.token;
 
             localStorage.setItem('token', authToken);
-            document.cookie = `token=${authToken}; path=/; max-age=86400`;
+            mirrorAuthCookies(authToken, authUser.role);
             setToken(authToken);
             setUser(authUser);
 

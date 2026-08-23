@@ -16,13 +16,11 @@ export const propertySchema = z.object({
   price: z.coerce.number().min(1, "Price must be greater than 0"),
   categoryId: z.string().min(1, "Please select a category"),
   isAvailable: z.boolean(),
-  images: z
-    .array(
-      z.object({
-        url: z.string().url("Please enter a valid Image URL"),
-      }),
-    )
-    .min(1, "At least one image URL is required"),
+  imageUrl: z
+    .string()
+    .url("Please enter a valid Image URL")
+    .optional()
+    .or(z.literal("")),
 });
 
 export type PropertyFormValues = z.infer<typeof propertySchema>;

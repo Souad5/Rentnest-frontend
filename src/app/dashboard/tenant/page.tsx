@@ -26,6 +26,7 @@ import {
     type AppDataTableFilterOption,
 } from '@/components/shared/AppDataTable';
 import { rentalsApi, ApiError } from '@/lib/api';
+import { useAuth } from '@/providers/AuthProvider';
 
 export interface Property {
     id: string;
@@ -34,6 +35,7 @@ export interface Property {
     location?: string;
     price: number;
     images?: string[];
+    imageUrl?: string | null;
 }
 
 export interface RentalRequest {
@@ -48,11 +50,18 @@ export interface RentalRequest {
 }
 
 export default function TenantRequestsPage() {
+    const { token, isLoading: authLoading } = useAuth();
     const [requests, setRequests] = useState<RentalRequest[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
 
     const fetchRequests = useCallback(async () => {
+        if (!token) {
+            // No authenticated session: skip protected endpoint entirely.
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         setError(null);
         try {
@@ -70,12 +79,22 @@ export default function TenantRequestsPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [token]);
 
     useEffect(() => {
+        if (authLoading) return;
         // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchRequests();
-    }, [fetchRequests]);
+    }, [fetchRequests, authLoading]);
+
+    // Post-payment feedback: checkout redirects here with ?payment=success.
+    useEffect(() => {
+        if (new URLSearchParams(window.location.search).get('payment') === 'success') {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setPaymentSuccess(true);
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+    }, []);
 
     const renderStatusBadge = (status: RentalRequest['status']) => {
         switch (status) {
@@ -133,10 +152,10 @@ export default function TenantRequestsPage() {
                     return (
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-xl bg-muted border border-border/60 flex items-center justify-center text-muted-foreground shrink-0 overflow-hidden">
-                                {req.property?.images?.[0] ? (
+                                {req.property?.imageUrl || req.property?.images?.[0] ? (
                                     // eslint-disable-next-line @next/next/no-img-element
                                     <img
-                                        src={req.property.images[0]}
+                                        src={req.property.imageUrl || req.property.images![0]}
                                         alt={req.property.title}
                                         className="h-full w-full object-cover"
                                     />
@@ -252,8 +271,41 @@ export default function TenantRequestsPage() {
         },
     ];
 
+    // Unauthenticated state: prompt sign-in instead of hitting protected APIs.
+    if (!authLoading && !token) {
+        return (
+            <div className="text-center py-16 px-4 border border-dashed border-border rounded-xl bg-card">
+                <ShieldAlert className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <h3 className="text-base font-semibold text-foreground">Sign in required</h3>
+                <p className="text-xs text-muted-foreground mt-1 mb-4 max-w-sm mx-auto">
+                    You need to be signed in as a tenant to view your rental requests.
+                </p>
+                <Button asChild size="sm">
+                    <Link href="/login">Sign In</Link>
+                </Button>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
+            {/* Payment Success Banner */}
+            {paymentSuccess && (
+                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-between gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                        <span>Payment successful! Your lease is now active.</span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setPaymentSuccess(false)}
+                        className="text-xs font-medium hover:underline shrink-0"
+                    >
+                        Dismiss
+                    </button>
+                </div>
+            )}
+
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
                 <div>

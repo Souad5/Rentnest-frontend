@@ -106,28 +106,49 @@ export const propertiesApi = {
 // 3. LANDLORD API
 // ==========================================
 export const landlordApi = {
-  createProperty: (payload: Record<string, unknown> | FormData) =>
-    fetcher<Record<string, unknown>>("/properties/landlord", {
-      method: "POST",
-      body: payload instanceof FormData ? payload : JSON.stringify(payload),
-    }),
+  // Authenticated portfolio listing: returns the landlord's own properties in
+  // every availability state (public GET /properties only ever returns
+  // isAvailable=true, which would hide rented-out listings).
+  getMyProperties: () =>
+    fetcher<{ success: boolean; message: string; data: ApiProperty[] }>(
+      "/landlord/properties",
+    ),
 
-  getLandlordPropertyById: (id: string) =>
-    fetcher<Record<string, unknown>>(`/properties/landlord/${id}`),
+  createProperty: (payload: Record<string, unknown> | FormData) =>
+    fetcher<{ success: boolean; message: string; data: ApiProperty }>(
+      "/properties/landlord",
+      {
+        method: "POST",
+        body: payload instanceof FormData ? payload : JSON.stringify(payload),
+      },
+    ),
+
+  updateProperty: (id: string, payload: Record<string, unknown>) =>
+    fetcher<{ success: boolean; message: string; data: ApiProperty }>(
+      `/properties/landlord/${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      },
+    ),
 
   deleteProperty: (id: string) =>
     fetcher<{ success: boolean; message: string }>(
-      `/landlord/properties/${id}`,
+      `/properties/landlord/${id}`,
       {
         method: "DELETE",
       },
     ),
 
   getRequests: () =>
-    fetcher<Array<Record<string, unknown>>>("/landlord/requests"),
+    fetcher<{
+      success: boolean;
+      message: string;
+      data: Array<Record<string, unknown>>;
+    }>("/landlord/requests"),
 
   updateRequestStatus: (id: string, status: "APPROVED" | "REJECTED") =>
-    fetcher<Record<string, unknown>>(`/landlord/requests/${id}`, {
+    fetcher<{ success: boolean; message: string }>(`/landlord/requests/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),
@@ -158,11 +179,15 @@ export const rentalsApi = {
 // 5. PAYMENTS API
 // ==========================================
 export const paymentsApi = {
-  createPaymentIntent: (rentalRequestId: string, amount: number) =>
+  // Backend derives the amount from the rental request's property price;
+  // only the rentalRequestId is accepted by the backend contract.
+  createPaymentIntent: (rentalRequestId: string) =>
     fetcher<{
       success: boolean;
       message: string;
       data: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        alreadyPaid: any;
         clientSecret: string;
         transactionId: string;
         amount: number;
@@ -170,22 +195,38 @@ export const paymentsApi = {
       };
     }>("/payments/create", {
       method: "POST",
-      body: JSON.stringify({ rentalRequestId, amount }),
+      body: JSON.stringify({ rentalRequestId }),
     }),
 
-  confirmPayment: (
-    rentalRequestId: string,
-    paymentIntentId: string,
-    amount: number,
-  ) =>
+  confirmPayment: (paymentIntentId: string) =>
     fetcher<{
       success: boolean;
       message: string;
-      data: Record<string, unknown>;
+      data: {
+        id: string;
+        rentalRequestId: string;
+        status: "PENDING" | "COMPLETED" | "FAILED";
+        paidAt: string | null;
+      };
     }>("/payments/confirm", {
       method: "POST",
-      body: JSON.stringify({ rentalRequestId, paymentIntentId, amount }),
+      body: JSON.stringify({ paymentIntentId }),
     }),
+
+  getPayments: () =>
+    fetcher<{
+      success: boolean;
+      message: string;
+      data: Array<{
+        id: string;
+        rentalRequestId: string;
+        amount: number;
+        status: string;
+        createdAt: string;
+      }>;
+    }>("/payments"),
+  getPaymentById: (id: string) =>
+    fetcher<Record<string, unknown>>(`/payments/${id}`),
 };
 
 // ==========================================
@@ -223,6 +264,7 @@ export interface ApiUser {
 export interface ApiProperty {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   images: any;
+  imageUrl?: string | null;
   id: string;
   title: string;
   description: string;

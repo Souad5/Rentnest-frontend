@@ -2,7 +2,7 @@
 
 import { UseFormRegister, FieldErrors } from 'react-hook-form';
 import { MapPin } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { AppInput } from '@/components/shared/AppInput';
 import { PropertyFormValues } from '@/schemas/property.schema';
 
 interface PropertyLocationFieldsProps {
@@ -17,7 +17,7 @@ export function PropertyLocationFields({ register, errors }: PropertyLocationFie
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 text-primary" /> Location / City
                 </label>
-                <Input
+                <AppInput
                     {...register('location')}
                     placeholder="e.g. Dhaka"
                     className="rounded-xl border-border/80 bg-background"
@@ -31,7 +31,7 @@ export function PropertyLocationFields({ register, errors }: PropertyLocationFie
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 text-primary" /> Street Address
                 </label>
-                <Input
+                <AppInput
                     {...register('address')}
                     placeholder="e.g. Bashundhara R/A"
                     className="rounded-xl border-border/80 bg-background"

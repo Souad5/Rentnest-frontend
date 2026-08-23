@@ -1,50 +1,35 @@
 # AGENTS.md
 
+Next.js 16 App Router frontend for RentNest (rental marketplace). Backend is a separate repo; this app talks to it over REST.
+
 ## Commands
 
-- `npm run dev` – dev server on :3000
-- `npm run build` – production build (`next build`, Turbopack); includes the type-check step
-- `npm run lint` – ESLint 9 flat config (`eslint-config-next` core-web-vitals + TS); bare `eslint`, lints whole repo
-- `npx tsc --noEmit` – standalone typecheck (no npm script exists)
-- No test framework is configured. Verification = `npm run lint` + `npm run build`.
+- Dev: `npm run dev` (port 3000)
+- Lint: `npm run lint`
+- Typecheck: `npx tsc --noEmit` (no script defined)
+- Build: `npm run build`
+- No tests exist; don't invent a test command.
 
-### Currently failing (re-verify before relying on this)
+## Environment
 
-- `next build` fails type-check on `src/services/api.ts`: it imports `apiFetch`, which no longer exists in `@/lib/api`. Nothing imports this file — it is stale dead code. The live API layer is `src/lib/api.ts`.
-- `npm run lint` reports 1 pre-existing error in `src/hooks/use-mobile.ts` (`react-hooks/set-state-in-effect`, stock shadcn hook) plus unused-var warnings elsewhere.
+`.env.local` requires:
+
+- `NEXT_PUBLIC_API_URL` — backend base URL (defaults to `http://localhost:5000/api` in `src/lib/api.ts`)
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 
 ## Architecture
 
-- Next.js 16 App Router, React 19, TypeScript strict mode. Path alias `@/* -> src/*`.
-- Tailwind CSS v4 with CSS-first config in `src/app/globals.css` — there is no tailwind.config file.
-- Route groups under `src/app`: `(auth)` login/register, `(public)` home + property listing/detail, `dashboard/<role>` for admin/landlord/tenant, `payment`.
-- Data fetching via TanStack Query (`src/providers/QueryProvider.tsx`) with hooks in `src/hooks`; zustand available for client state.
-- Frontend↔backend endpoint contract is documented in `API_INTEGRATION.md`.
+- Path alias: `@/*` → `src/*`.
+- Routes: `(auth)/login|register`, `(public)` homepage, `/dashboard/{admin,landlord,tenant}` split by role.
+- Providers wired in `src/app/layout.tsx`: `AuthProvider` → `QueryProvider` (TanStack Query v5).
 
-## Auth model (easy to break)
+## Gotchas
 
-Auth state lives in TWO places and must stay in sync:
-
-- `localStorage.token` – read by the fetch client (`src/lib/api.ts`) to attach `Authorization: Bearer`
-- cookies `token` and `role` – the ONLY thing `middleware.ts` reads to gate `/dashboard/**` by role and to redirect logged-in users away from `/login` / `/register`
-
-Known gaps:
-
-- `AuthProvider` login/register/logout write/clear only the `token` cookie; nothing in this repo ever sets the `role` cookie that middleware checks for `/dashboard/{admin,landlord,tenant}` access.
-- Cookies expire after 24h (`max-age=86400`) while localStorage never expires — sessions can be half-expired (cookie gone, token still valid), surfacing as redirects to `/login?from=...`.
-
-## API layer
-
-- All requests go through `src/lib/api.ts`: namespaced objects (`authApi`, `propertiesApi`, `landlordApi`, `rentalsApi`, `paymentsApi`, `reviewsApi`, `adminApi`) built on a private `fetcher` that injects the Bearer token, omits Content-Type for FormData bodies, and throws `ApiError` (exposes `.status` and `.data`). Reuse it instead of raw `fetch` or axios.
-- Base URL comes from `NEXT_PUBLIC_API_URL`, defaulting to `https://rentnest-backend-five.vercel.app/api`.
-- `.env.local` expects `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (Stripe Elements checkout in `src/components/payment/StripeCheckoutForm.tsx`).
-
-## UI conventions
-
-- shadcn/ui ("radix-nova" style) primitives live in `src/components/ui` — add new ones via the shadcn CLI rather than hand-writing them.
-- Prefer app-level wrappers in `src/components/shared` (`AppButton`, `AppInput`, `AppDataTable`, `StatusBadge`, ...) over raw primitives.
-- Remote images must be allow-listed in `next.config.ts` (`images.remotePatterns`): only Unsplash and Cloudinary currently pass.
-
-## Commits
-
-- Conventional commits (`feat:`, `fix:`), matching existing history.
+- **Auth is dual-tracked.** JWT lives in `localStorage.token` (sent as Bearer header by the fetcher in `src/lib/api.ts`) and is mirrored into a plain `token` cookie by `AuthProvider` because `middleware.ts` gates `/dashboard/*` server-side off cookies. Any new auth flow must update both.
+- **Middleware expects a `role` cookie that nothing writes.** Only the `token` cookie is set (`src/providers/AuthProvider.tsx`), so middleware's role-based redirects never fire; real role enforcement is client-side via `src/components/guard/RoleGuard.tsx`.
+- **Two API layers existed; the stale one is gone.** Use `src/lib/api.ts` (`fetcher`, `ApiError`, `authApi`, `propertiesApi`, etc.). The old `src/services/api.ts` (imported a nonexistent `apiFetch`) was deleted. All `src/hooks/*.ts` files are empty placeholders.
+- **Property images are a single `imageUrl`.** Backend `POST /properties/landlord` accepts optional singular `imageUrl` (verified against `rentnest-backend/prisma/schema.prisma`) — there is no `images` array on the model; older UI code that read `images[0]` now falls back through `imageUrl → images?.[0] → unsplash placeholder` for mock/legacy data.
+- **Endpoint map:** `API_INTEGRATION.md` documents page→endpoint mappings, but verify against `src/lib/api.ts` before trusting it (it has drifted).
+- **Tailwind v4:** no config file; theme tokens are CSS variables in `src/app/globals.css`.
+- **shadcn/ui:** radix-nova style (`components.json`); generated components go to `src/components/ui`. Hand-written app components live in `src/components/shared` with an `App*` prefix (`AppButton`, `AppDataTable`, …).
+- Remote images are restricted to unsplash + cloudinary domains in `next.config.ts`.

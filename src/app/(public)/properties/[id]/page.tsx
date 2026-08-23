@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -7,16 +6,15 @@ import {
     Calendar,
     CheckCircle2,
     ShieldCheck,
-    Phone,
-    Building2,
     Share2,
     Heart,
     Tag,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { AppButton } from '@/components/shared/AppButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import StatusBadge from '@/components/shared/StatusBadge';
+import { PropertyGallery } from '@/components/shared/PropertyGallery';
 import { RentalRequestForm } from '@/components/forms/RentalRequestForm';
 
 const BASE_URL = (
@@ -25,6 +23,7 @@ const BASE_URL = (
 
 interface PropertyDetailPageProps {
     params: Promise<{ id: string }>;
+    searchParams?: Promise<{ moveIn?: string; moveOut?: string }>;
 }
 
 export interface CategoryData {
@@ -53,6 +52,7 @@ export interface PropertyDetail {
     category?: CategoryData;
     landlord?: LandlordData;
     images?: string[];
+    imageUrl?: string | null;
 }
 
 const DEFAULT_AMENITIES = [
@@ -85,7 +85,7 @@ async function getPropertyDetail(id: string): Promise<PropertyDetail | null> {
     }
 }
 
-export default async function PropertyDetailPage({ params }: PropertyDetailPageProps) {
+export default async function PropertyDetailPage({ params, searchParams }: PropertyDetailPageProps) {
     const { id } = await params;
     const property = await getPropertyDetail(id);
 
@@ -93,9 +93,22 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
         notFound();
     }
 
+    const query = searchParams ? await searchParams : {};
+    const parseDateParam = (value?: string) => {
+        if (!value) return undefined;
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+    };
+    const defaultStartDate = parseDateParam(query.moveIn);
+    const defaultEndDate = defaultStartDate ? parseDateParam(query.moveOut) : undefined;
+
+    const galleryImages = [
+        ...(property.imageUrl ? [property.imageUrl] : []),
+        ...(property.images ?? []),
+    ];
     const images =
-        property.images && property.images.length > 0
-            ? property.images
+        galleryImages.length > 0
+            ? galleryImages
             : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750'];
 
     const isAvailable = property.isAvailable ?? true;
@@ -119,55 +132,27 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
         <div className="space-y-8 py-6 max-w-7xl mx-auto px-4 sm:px-6">
             {/* Top Navigation Bar */}
             <div className="flex items-center justify-between">
-                <Button asChild variant="ghost" size="sm" className="gap-2">
+                <AppButton asChild variant="ghost" size="sm" className="gap-2">
                     <Link href="/properties">
                         <ArrowLeft className="h-4 w-4" /> Back to Properties
                     </Link>
-                </Button>
+                </AppButton>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" aria-label="Share listing">
+                    <AppButton variant="outline" size="icon" aria-label="Share listing">
                         <Share2 className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" aria-label="Save listing">
+                    </AppButton>
+                    <AppButton variant="outline" size="icon" aria-label="Save listing">
                         <Heart className="h-4 w-4" />
-                    </Button>
+                    </AppButton>
                 </div>
             </div>
 
-            {/* Photo Gallery Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-2xl overflow-hidden border border-border shadow-xs">
-                <div className="relative aspect-16/10 md:aspect-auto md:col-span-2 min-h-80 bg-muted">
-                    <Image
-                        src={images[0]}
-                        alt={property.title}
-                        fill
-                        priority
-                        sizes="(max-width: 768px) 100vw, 66vw"
-                        className="object-cover"
-                    />
-                    <div className="absolute top-4 left-4">
-                        <StatusBadge status={isAvailable ? 'AVAILABLE' : 'RENTED'} />
-                    </div>
-                </div>
-                <div className="hidden md:grid grid-rows-2 gap-4">
-                    {images.slice(1, 3).map((imgUrl, index) => (
-                        <div key={index} className="relative w-full h-full bg-muted min-h-40">
-                            <Image
-                                src={imgUrl}
-                                alt={`${property.title} view ${index + 2}`}
-                                fill
-                                sizes="33vw"
-                                className="object-cover"
-                            />
-                        </div>
-                    ))}
-                    {images.length <= 1 && (
-                        <div className="relative w-full h-full bg-muted min-h-40 flex items-center justify-center text-muted-foreground text-xs">
-                            <Building2 className="h-8 w-8 opacity-40" />
-                        </div>
-                    )}
-                </div>
-            </div>
+            {/* Photo Gallery */}
+            <PropertyGallery
+                images={images}
+                title={property.title}
+                badge={<StatusBadge status={isAvailable ? 'AVAILABLE' : 'RENTED'} />}
+            />
 
             {/* Content & Action Sidebar */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -274,21 +259,14 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                             </div>
 
                             {/* Interactive Rental Request Modal Form */}
-                            <div className="space-y-3">
-                                <RentalRequestForm
-                                    propertyId={property.id}
-                                    propertyTitle={property.title}
-                                    price={property.price}
-                                    isAvailable={isAvailable}
-                                />
-                                <Button
-                                    variant="outline"
-                                    className="w-full gap-2"
-                                    disabled={!isAvailable}
-                                >
-                                    <Phone className="h-4 w-4" /> Call Agent
-                                </Button>
-                            </div>
+                            <RentalRequestForm
+                                propertyId={property.id}
+                                propertyTitle={property.title}
+                                price={property.price}
+                                isAvailable={isAvailable}
+                                defaultStartDate={defaultStartDate}
+                                defaultEndDate={defaultEndDate}
+                            />
 
                             <p className="text-xs text-center text-muted-foreground">
                                 No booking fees charged upfront. Verified by RentNest guarantee.

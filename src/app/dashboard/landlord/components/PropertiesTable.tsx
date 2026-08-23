@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { type ColumnDef } from '@tanstack/react-table';
-import { Search, Building2, Plus, Eye, Edit, Trash2, CheckCircle2, Clock } from 'lucide-react';
+import { Search, Building2, Plus, Eye, Edit, Trash2, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { AppInput } from '@/components/shared/AppInput';
 import { AppButton } from '@/components/shared/AppButton';
 import { AppDataTable } from '@/components/shared/AppDataTable';
@@ -14,6 +14,8 @@ interface PropertiesTableProps {
     properties: ApiProperty[];
     isLoading: boolean;
     userId?: string;
+    deletingId: string | null;
+    togglingId: string | null;
     onDelete: (id: string) => void;
     onToggleAvailability: (id: string, currentStatus?: boolean) => void;
 }
@@ -21,6 +23,8 @@ interface PropertiesTableProps {
 export function PropertiesTable({
     properties,
     isLoading,
+    deletingId,
+    togglingId,
     onDelete,
     onToggleAvailability,
 }: PropertiesTableProps) {
@@ -38,7 +42,7 @@ export function PropertiesTable({
                         <div className="flex items-center gap-3">
                             <div className="relative h-11 w-14 overflow-hidden rounded-xl bg-slate-100 shrink-0 border border-slate-200/50">
                                 <Image
-                                    src={property.images?.[0] || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750'}
+                                    src={property.imageUrl || property.images?.[0] || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750'}
                                     alt={property.title}
                                     fill
                                     sizes="56px"
@@ -90,13 +94,20 @@ export function PropertiesTable({
                 },
                 cell: ({ row }) => {
                     const property = row.original;
+                    const isToggling = togglingId === property.id;
                     return (
                         <button
                             type="button"
+                            disabled={isToggling}
                             onClick={() => onToggleAvailability(property.id, property.isAvailable ?? true)}
-                            className="cursor-pointer border-none bg-transparent"
+                            className="cursor-pointer border-none bg-transparent disabled:opacity-60 disabled:cursor-wait"
+                            title="Click to toggle availability"
                         >
-                            {property.isAvailable ? (
+                            {isToggling ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                                    <Loader2 className="h-3 w-3 animate-spin" /> Updating...
+                                </span>
+                            ) : property.isAvailable ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200/50">
                                     <CheckCircle2 className="h-3 w-3" /> Available
                                 </span>
@@ -114,6 +125,7 @@ export function PropertiesTable({
                 header: () => <div className="text-right">Actions</div>,
                 cell: ({ row }) => {
                     const property = row.original;
+                    const isDeleting = deletingId === property.id;
                     return (
                         <div className="flex items-center justify-end gap-1">
                             <AppButton asChild variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700 rounded-lg">
@@ -129,17 +141,22 @@ export function PropertiesTable({
                             <AppButton
                                 variant="ghost"
                                 size="icon"
+                                disabled={isDeleting}
                                 onClick={() => onDelete(property.id)}
-                                className="h-8 w-8 text-rose-500 hover:bg-rose-50 rounded-lg"
+                                className="h-8 w-8 text-rose-500 hover:bg-rose-50 rounded-lg disabled:opacity-60"
                             >
-                                <Trash2 className="h-3.5 w-3.5" />
+                                {isDeleting ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                )}
                             </AppButton>
                         </div>
                     );
                 },
             },
         ],
-        [onDelete, onToggleAvailability]
+        [onDelete, onToggleAvailability, deletingId, togglingId]
     );
 
     return (

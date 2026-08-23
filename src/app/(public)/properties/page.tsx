@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, Building, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -49,13 +50,14 @@ export interface Property {
     landlord?: LandlordData;
 }
 
-export default function PropertiesPage() {
+function PropertiesContent() {
+    const searchParams = useSearchParams();
     const [properties, setProperties] = useState<Property[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
 
-    // Filters
-    const [searchTerm, setSearchTerm] = useState<string>('');
+    // Filters (seeded from hero search params)
+    const [searchTerm, setSearchTerm] = useState<string>(() => searchParams.get('q') ?? '');
     const [maxPrice, setMaxPrice] = useState<number | ''>('');
     const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
 
@@ -114,7 +116,7 @@ export default function PropertiesPage() {
     };
 
     return (
-        <div className=" bg-[#f4f3f0]">
+        <div className=" bg-[#f4f3f0] p-4">
             <div className='max-w-7xl mx-auto space-y-8 py-4'>
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -246,5 +248,13 @@ export default function PropertiesPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function PropertiesPage() {
+    return (
+        <Suspense fallback={null}>
+            <PropertiesContent />
+        </Suspense>
     );
 }

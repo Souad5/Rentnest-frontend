@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Heart, Star, Tag, MapPin, BedDouble, Bath, Ruler } from 'lucide-react';
 import { Property } from '@/types/api';
 import { cn } from '@/lib/utils';
@@ -14,11 +15,23 @@ interface PropertyCardProps {
 
 export default function PropertyCard({ property, priority = false }: PropertyCardProps) {
     const [isLiked, setIsLiked] = useState(false);
+    const searchParams = useSearchParams();
+
+    const detailHref = useMemo(() => {
+        const params = new URLSearchParams();
+        const moveIn = searchParams.get('moveIn');
+        const moveOut = searchParams.get('moveOut');
+        if (moveIn) params.set('moveIn', moveIn);
+        if (moveOut) params.set('moveOut', moveOut);
+        const qs = params.toString();
+        return qs ? `/properties/${property.id}?${qs}` : `/properties/${property.id}`;
+    }, [property.id, searchParams]);
 
     const imageUrl =
-        property.images && property.images.length > 0
+        property.imageUrl ||
+        (property.images && property.images.length > 0
             ? property.images[0]
-            : 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80';
+            : 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80');
 
     const isAvailable = property.isAvailable ?? true;
     const formattedPrice = new Intl.NumberFormat('en-US').format(property.price || 0);
@@ -95,7 +108,7 @@ export default function PropertyCard({ property, priority = false }: PropertyCar
 
                 {/* Title */}
                 <h3 className="line-clamp-1 pr-2 font-serif text-lg leading-snug text-[#1c1d1d]">
-                    <Link href={`/properties/${property.id}`} className="focus:outline-none">
+                    <Link href={detailHref} className="focus:outline-none">
                         <span className="absolute inset-0 z-10" aria-hidden="true" />
                         {property.title}
                     </Link>
