@@ -148,3 +148,9 @@
     @apply font-sans;
   }
 }
+
+/* Replace with the actual class or ID of the Stripe element */
+/* [class*="stripe"],
+[id*="stripe"] {
+  display: none !important;
+} */
