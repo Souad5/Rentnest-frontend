@@ -1,6 +1,5 @@
 const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://rentnest-backend-five.vercel.app/api";
+  process.env.PUBLIC_API_URL || "https://rentnest-backend-five.vercel.app/api";
 /**
  * Structured API Error Response
  */
@@ -53,8 +52,7 @@ function extractApiMessage(data: Record<string, unknown>): string | undefined {
 
     if (messages.length > 0) {
       // A generic banner adds nothing when we have specifics.
-      const isGeneric =
-        !baseMessage || /^validation error$/i.test(baseMessage);
+      const isGeneric = !baseMessage || /^validation error$/i.test(baseMessage);
       return isGeneric
         ? messages.join(" ")
         : `${baseMessage}: ${messages.join(" ")}`;

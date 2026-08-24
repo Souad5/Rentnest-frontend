@@ -4,7 +4,7 @@ This document maps all frontend components and App Router pages to their corresp
 
 ## Base Configuration
 
-- **Base URL:** `process.env.NEXT_PUBLIC_API_URL` (defaults to `http://localhost:5000/api` in `src/lib/api.ts`)
+- **Base URL:** `process.env.PUBLIC_API_URL` (defaults to `http://localhost:5000/api` in `src/lib/api.ts`)
 - **Authentication:** Bearer JWT stored in `localStorage.token` (mirrored into a plain `token` cookie for middleware), injected via Authorization header: `Authorization: Bearer <token>`
 
 ---

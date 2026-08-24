@@ -14,7 +14,7 @@ Next.js 16 App Router frontend for RentNest (rental marketplace). Backend is a s
 
 `.env.local` requires:
 
-- `NEXT_PUBLIC_API_URL` — backend base URL (defaults to `http://localhost:5000/api` in `src/lib/api.ts`)
+- `PUBLIC_API_URL` — backend base URL (defaults to `http://localhost:5000/api` in `src/lib/api.ts`)
 - `STRIPE_PUBLISHABLE_KEY`
 
 ## Architecture
