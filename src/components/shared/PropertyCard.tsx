@@ -45,7 +45,7 @@ export default function PropertyCard({ property, priority = false }: PropertyCar
     return (
         <div className="group relative flex flex-col cursor-pointer">
             {/* Image Container */}
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-muted ring-1 ring-black/5 shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1">
+            <div className="relative aspect-4/3 w-full overflow-hidden rounded-2xl bg-muted ring-1 ring-black/5 shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1">
                 <Image
                     src={imageUrl}
                     alt={property.title}
@@ -67,7 +67,7 @@ export default function PropertyCard({ property, priority = false }: PropertyCar
                 >
                     <Heart
                         className={cn(
-                            'h-[18px] w-[18px] stroke-neutral-800 transition-colors',
+                            'h-4.5 w-4.5 stroke-neutral-800 transition-colors',
                             isLiked ? 'fill-rose-500 stroke-rose-500' : 'fill-transparent',
                         )}
                     />

@@ -21,6 +21,50 @@ export class ApiError extends Error {
 }
 
 /**
+ * Extracts the most user-friendly message from an API error body.
+ *
+ * Zod-validated endpoints respond with a generic message ("Validation Error")
+ * plus structured `errorDetails: [{ field, message }]`; the individual issue
+ * messages are what users actually need, so they take precedence.
+ */
+function extractApiMessage(data: Record<string, unknown>): string | undefined {
+  const baseMessage =
+    typeof data.message === "string" && data.message.trim()
+      ? data.message.trim()
+      : undefined;
+
+  const details = data.errorDetails;
+  if (Array.isArray(details) && details.length > 0) {
+    const messages = Array.from(
+      new Set(
+        details
+          .map((item) => {
+            if (typeof item === "string") return item;
+            if (item && typeof item === "object") {
+              const message = (item as { message?: unknown }).message;
+              if (typeof message === "string" && message.trim())
+                return message.trim();
+            }
+            return null;
+          })
+          .filter((message): message is string => Boolean(message)),
+      ),
+    );
+
+    if (messages.length > 0) {
+      // A generic banner adds nothing when we have specifics.
+      const isGeneric =
+        !baseMessage || /^validation error$/i.test(baseMessage);
+      return isGeneric
+        ? messages.join(" ")
+        : `${baseMessage}: ${messages.join(" ")}`;
+    }
+  }
+
+  return baseMessage;
+}
+
+/**
  * Universal Fetch Client with Token Injection & Error Normalization
  */
 async function fetcher<T>(
@@ -50,7 +94,8 @@ async function fetcher<T>(
 
   if (!response.ok) {
     throw new ApiError(
-      data.message || `API request failed with status ${response.status}`,
+      extractApiMessage(data) ||
+        `API request failed with status ${response.status}`,
       response.status,
       data,
     );
@@ -232,16 +277,57 @@ export const paymentsApi = {
 // ==========================================
 // 6. REVIEWS API
 // ==========================================
+
+/** Minimal tenant profile embedded in every review payload. */
+export interface ReviewTenant {
+  id: string;
+  name: string;
+}
+
+/** A single property review as returned by the backend. */
+export interface Review {
+  id: string;
+  tenantId?: string;
+  propertyId?: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  tenant: ReviewTenant;
+}
+
+/** GET /reviews/property/:propertyId response body. */
+export interface PropertyReviewsData {
+  averageRating: number;
+  totalReviews: number;
+  reviews: Review[];
+}
+
+export interface PropertyReviewsResponse {
+  success: boolean;
+  message: string;
+  data: PropertyReviewsData;
+}
+
+/** POST /reviews response body. */
+export interface CreateReviewResponse {
+  success: boolean;
+  message: string;
+  data: Review;
+}
+
+export interface CreateReviewPayload {
+  propertyId: string;
+  /** Integer between 1 and 5. */
+  rating: number;
+  comment: string;
+}
+
 export const reviewsApi = {
   getByPropertyId: (propertyId: string) =>
-    fetcher<Array<Record<string, unknown>>>(`/reviews/property/${propertyId}`),
+    fetcher<PropertyReviewsResponse>(`/reviews/property/${propertyId}`),
 
-  createReview: (payload: {
-    propertyId: string;
-    rating: number;
-    comment: string;
-  }) =>
-    fetcher<Record<string, unknown>>("/reviews", {
+  createReview: (payload: CreateReviewPayload) =>
+    fetcher<CreateReviewResponse>("/reviews", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

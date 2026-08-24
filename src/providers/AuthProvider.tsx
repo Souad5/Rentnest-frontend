@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { authApi } from '@/lib/api';
+import { authApi, ApiError } from '@/lib/api';
 
 export type UserRole = 'TENANT' | 'LANDLORD' | 'ADMIN';
 
@@ -96,8 +96,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     // keep passing the middleware role gates.
                     mirrorAuthCookies(storedToken, userData.role);
                 }
-            } catch {
-                if (isMounted) logout();
+            } catch (error) {
+                // Only an explicit auth rejection should end the session; a
+                // transient network/5xx failure must not wipe localStorage
+                // while protected pages are still mounted, or their API calls
+                // go out tokenless ("No token provided").
+                const status = error instanceof ApiError ? error.status : undefined;
+                if (isMounted && (status === 401 || status === 403)) {
+                    logout();
+                }
             } finally {
                 if (isMounted) setIsLoading(false);
             }

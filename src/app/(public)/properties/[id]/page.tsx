@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { PropertyGallery } from '@/components/shared/PropertyGallery';
 import { RentalRequestForm } from '@/components/forms/RentalRequestForm';
+import { PropertyReviews } from '@/components/reviews/PropertyReviews';
 
 const BASE_URL = (
     process.env.NEXT_PUBLIC_API_URL || 'https://rentnest-backend-five.vercel.app/api'
@@ -223,6 +224,9 @@ export default async function PropertyDetailPage({ params, searchParams }: Prope
                             ))}
                         </div>
                     </div>
+
+                    {/* Tenant Ratings & Reviews */}
+                    <PropertyReviews propertyId={property.id} className="border-t border-border pt-6" />
 
                     <div className="flex items-center gap-6 border-t border-border pt-6 text-xs text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1.5">

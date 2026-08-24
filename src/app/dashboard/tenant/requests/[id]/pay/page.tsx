@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, type StripeElementsOptions } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import {
     ArrowLeft,
@@ -50,6 +50,27 @@ export default function TenantPaymentPage() {
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Elements must never see a changed clientSecret prop (it is immutable
+    // after mount), so keep the options object identity stable and remount
+    // the whole tree via `key` if the secret ever differs.
+    const elementsOptions = useMemo<StripeElementsOptions>(
+        () => ({
+            clientSecret: clientSecret as string,
+            appearance: {
+                theme: 'stripe',
+                variables: {
+                    colorPrimary: '#10b981',
+                },
+            },
+        }),
+        [clientSecret]
+    );
+
+    // StrictMode double-invokes effects in dev; a second createPaymentIntent
+    // call can mint a second PaymentIntent and swap the clientSecret out from
+    // under the mounted <Elements>.
+    const initializedFor = useRef<string | null>(null);
 
     const initCheckout = useCallback(async () => {
         if (!requestId || !token) {
@@ -116,9 +137,11 @@ export default function TenantPaymentPage() {
 
     useEffect(() => {
         if (authLoading) return;
+        if (initializedFor.current === requestId) return;
+        initializedFor.current = requestId;
         // eslint-disable-next-line react-hooks/set-state-in-effect
         initCheckout();
-    }, [initCheckout, authLoading]);
+    }, [initCheckout, authLoading, requestId]);
 
     if (authLoading || loading) {
         return (
@@ -186,16 +209,9 @@ export default function TenantPaymentPage() {
                 <div className="md:col-span-7 space-y-4">
                     {clientSecret && (
                         <Elements
+                            key={clientSecret}
                             stripe={stripePromise}
-                            options={{
-                                clientSecret,
-                                appearance: {
-                                    theme: 'stripe',
-                                    variables: {
-                                        colorPrimary: '#10b981',
-                                    },
-                                },
-                            }}
+                            options={elementsOptions}
                         >
                             <CheckoutForm
                                 rentalRequestId={requestId}

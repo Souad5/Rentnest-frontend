@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { addDays, format, startOfToday } from 'date-fns';
 import {
@@ -112,13 +113,19 @@ export function RentalRequestForm({
                 token
             );
 
+            toast.success('Rental request submitted', {
+                description: 'The landlord will review your application shortly.',
+            });
             setSuccess(true);
             setTimeout(() => {
                 setOpen(false);
                 router.push('/dashboard/tenant');
             }, 1500);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Something went wrong');
+            const message =
+                err instanceof Error ? err.message : 'Something went wrong';
+            setError(message);
+            toast.error(message);
         } finally {
             setLoading(false);
         }

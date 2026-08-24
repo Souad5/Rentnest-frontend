@@ -46,7 +46,7 @@ interface NavItem {
 
 const navByRole: Record<UserRole, NavItem[]> = {
     TENANT: [
-        { label: 'Overview', href: '/dashboard/tenant', icon: Home },
+        { label: 'My Rental Requests', href: '/dashboard/tenant/requests', icon: CheckSquare },
         { label: 'Browse Properties', href: '/properties', icon: Search },
     ],
     LANDLORD: [
@@ -128,7 +128,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     Navigation
                                 </SidebarGroupLabel>
                                 <SidebarGroupContent>
-                                    <SidebarMenu>
+                                    <SidebarMenu className='space-y-2'>
                                         {navigation.map((item) => {
                                             const Icon = item.icon;
                                             const isActive = pathname === item.href;

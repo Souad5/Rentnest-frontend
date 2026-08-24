@@ -67,6 +67,7 @@ export function DiscoverPlaces() {
                                 src={dest.img}
                                 alt={dest.name}
                                 fill
+                                priority={dest.elevated}
                                 sizes="(max-width: 768px) 100vw, 33vw"
                                 className="object-cover group-hover:scale-105 transition-transform duration-700"
                             />

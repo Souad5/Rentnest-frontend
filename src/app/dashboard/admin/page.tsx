@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     BarChart,
@@ -33,7 +33,7 @@ export default function AdminDashboardPage() {
     const [stats, setStats] = useState({ users: 0, properties: 0, pending: 0 });
     const [loading, setLoading] = useState(true);
 
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         setLoading(true);
         try {
             const [usersRes, propsRes] = await Promise.all([
@@ -54,12 +54,15 @@ export default function AdminDashboardPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
+        // Wait for an authenticated admin session; fetching earlier sends the
+        // request without a Bearer token and the backend rejects it.
+        if (user?.role !== 'ADMIN') return;
         // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchStats();
-    }, []);
+    }, [user, fetchStats]);
 
     // Mock analytical data for visual presentation
     const barData = [

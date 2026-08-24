@@ -9,10 +9,12 @@ import {
     Home,
     Loader2,
     RefreshCw,
+    Star,
     XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { ReviewFormModal } from '@/components/forms/ReviewFormModal';
 import { paymentsApi, ApiError } from '@/lib/api';
 
 interface PaymentRecord {
@@ -20,6 +22,13 @@ interface PaymentRecord {
     status: 'PENDING' | 'COMPLETED' | 'FAILED';
     amount: number;
     paidAt: string | null;
+    // GET /payments/:id embeds the related rental request and its property.
+    rentalRequest?: {
+        property?: {
+            id: string;
+            title: string;
+        };
+    };
 }
 
 function PaymentSuccessContent() {
@@ -29,6 +38,8 @@ function PaymentSuccessContent() {
     const [payment, setPayment] = useState<PaymentRecord | null>(null);
     const [verifying, setVerifying] = useState<boolean>(true);
     const [verifyError, setVerifyError] = useState<string | null>(null);
+    const [reviewOpen, setReviewOpen] = useState<boolean>(false);
+    const [reviewSubmitted, setReviewSubmitted] = useState<boolean>(false);
 
     const verifyPayment = useCallback(async () => {
         if (!paymentId) {
@@ -59,6 +70,8 @@ function PaymentSuccessContent() {
 
     const isCompleted = payment?.status === 'COMPLETED';
     const isFailed = payment?.status === 'FAILED';
+
+    const reviewedProperty = isCompleted ? payment?.rentalRequest?.property : undefined;
 
     return (
         <div className="min-h-[70vh] flex items-center justify-center py-12 px-4">
@@ -112,6 +125,42 @@ function PaymentSuccessContent() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* [Payment Success] → [Leave Review] step */}
+                            {reviewedProperty && (
+                                <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
+                                    {reviewSubmitted ? (
+                                        <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
+                                            <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                            <span>
+                                                Review published — thanks for helping the
+                                                RentNest community!
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div>
+                                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5 justify-center">
+                                                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                                                    Enjoying {reviewedProperty.title}?
+                                                </h3>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    Your lease is active — leave a rating so
+                                                    other tenants know what to expect.
+                                                </p>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                onClick={() => setReviewOpen(true)}
+                                                className="w-full gap-1.5 h-9 text-xs font-medium"
+                                            >
+                                                <Star className="h-3.5 w-3.5" />
+                                                Leave a Review
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
                         </>
                     ) : isFailed ? (
                         <p className="text-sm text-muted-foreground leading-relaxed">
@@ -150,6 +199,14 @@ function PaymentSuccessContent() {
                     </Button>
                 </CardFooter>
             </Card>
+
+            <ReviewFormModal
+                open={reviewOpen}
+                onOpenChange={setReviewOpen}
+                onSuccess={() => setReviewSubmitted(true)}
+                propertyId={reviewedProperty?.id}
+                propertyTitle={reviewedProperty?.title}
+            />
         </div>
     );
 }

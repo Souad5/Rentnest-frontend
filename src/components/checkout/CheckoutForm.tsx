@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
@@ -44,6 +45,9 @@ export function CheckoutForm({ amount, clientSecret }: CheckoutFormProps) {
 
             if (existing.paymentIntent?.status === 'succeeded') {
                 await paymentsApi.confirmPayment(existing.paymentIntent.id);
+                toast.success('Payment successful', {
+                    description: 'Your lease is now active.',
+                });
                 router.push('/dashboard/tenant?payment=success');
                 return;
             }
@@ -55,7 +59,10 @@ export function CheckoutForm({ amount, clientSecret }: CheckoutFormProps) {
             });
 
             if (stripeError) {
-                setErrorMessage(stripeError.message || 'An error occurred with your payment.');
+                const message =
+                    stripeError.message || 'An error occurred with your payment.';
+                setErrorMessage(message);
+                toast.error(message);
                 setIsProcessing(false);
                 submitLockRef.current = false;
                 return;
@@ -66,11 +73,17 @@ export function CheckoutForm({ amount, clientSecret }: CheckoutFormProps) {
             if (paymentIntent && paymentIntent.status === 'succeeded') {
                 try {
                     await paymentsApi.confirmPayment(paymentIntent.id);
+                    toast.success('Payment successful', {
+                        description: 'Your lease is now active.',
+                    });
                     router.push('/dashboard/tenant?payment=success');
                 } catch (err) {
                     if (err instanceof ApiError && err.status === 400) {
                         // Server disagrees with the client-side status: surface honestly.
-                        setErrorMessage(err.message || 'Payment could not be verified.');
+                        const message =
+                            err.message || 'Payment could not be verified.';
+                        setErrorMessage(message);
+                        toast.error(message);
                         setIsProcessing(false);
                         submitLockRef.current = false;
                         return;
@@ -81,15 +94,18 @@ export function CheckoutForm({ amount, clientSecret }: CheckoutFormProps) {
             }
 
             // Not succeeded yet (e.g. processing / requires_action): stop and inform.
-            setErrorMessage(
-                `Payment not completed${paymentIntent?.status ? ` (status: ${paymentIntent.status})` : ''}. Please try again.`
-            );
+            const incompleteMessage = `Payment not completed${paymentIntent?.status ? ` (status: ${paymentIntent.status})` : ''}. Please try again.`;
+            setErrorMessage(incompleteMessage);
+            toast.error(incompleteMessage);
             setIsProcessing(false);
             submitLockRef.current = false;
         } catch (err) {
-            setErrorMessage(
-                err instanceof ApiError ? err.message : 'Failed to process payment. Please try again.'
-            );
+            const message =
+                err instanceof ApiError
+                    ? err.message
+                    : 'Failed to process payment. Please try again.';
+            setErrorMessage(message);
+            toast.error(message);
             setIsProcessing(false);
             submitLockRef.current = false;
         }

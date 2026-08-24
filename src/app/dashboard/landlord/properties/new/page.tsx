@@ -16,7 +16,7 @@ import {
     AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+// import { Badge } from '@/components/ui/badge';
 import { AppButton } from '@/components/shared/AppButton';
 import { AppInput } from '@/components/shared/AppInput';
 
@@ -122,9 +122,9 @@ export default function CreatePropertyPage() {
                         <ArrowLeft className="h-4 w-4" /> Back to Workspace
                     </Link>
                 </AppButton>
-                <Badge variant="outline" className="text-xs font-mono">
+                {/* <Badge variant="outline" className="text-xs font-mono">
                     POST /properties/landlord
-                </Badge>
+                </Badge> */}
             </div>
 
             <Card className="rounded-3xl border-border/80 shadow-md bg-card/60 backdrop-blur-xl">
