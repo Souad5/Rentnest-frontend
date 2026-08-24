@@ -272,10 +272,9 @@ export default function RegisterPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.6, duration: 0.5 }}
-                        className="flex items-center justify-between text-[11px] text-neutral-400 pt-4"
+                        className="flex items-center justify-center text-[11px] text-neutral-400 pt-4"
                     >
                         <span>© 2025 RentNest</span>
-                        <Link href="/contact" className="hover:text-neutral-600">Contact Us</Link>
                     </motion.div>
                 </div>
             </div>

@@ -36,7 +36,7 @@ export default function Footer() {
                     </div>
 
                     {/* Quick Links Column */}
-                    <div className="md:col-span-2 space-y-3">
+                    <div className="md:col-span-3 space-y-3">
                         <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-300">
                             Rental Types
                         </h3>
@@ -64,37 +64,8 @@ export default function Footer() {
                         </ul>
                     </div>
 
-                    {/* Company Column */}
-                    <div className="md:col-span-2 space-y-3">
-                        <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-300">
-                            Company
-                        </h3>
-                        <ul className="space-y-2 text-xs text-neutral-400">
-                            <li>
-                                <Link href="/about" className="hover:text-white transition-colors">
-                                    About Us
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/careers" className="hover:text-white transition-colors">
-                                    Careers
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/blog" className="hover:text-white transition-colors">
-                                    Rental Blog
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/contact" className="hover:text-white transition-colors">
-                                    Contact Us
-                                </Link>
-                            </li>
-                        </ul>
-                    </div>
-
                     {/* Newsletter Column */}
-                    <div className="md:col-span-4 space-y-3">
+                    <div className="md:col-span-5 space-y-3">
                         <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-300">
                             Rental Alerts
                         </h3>
@@ -141,17 +112,10 @@ export default function Footer() {
                         })}
                     </div>
 
-                    {/* Policy Links */}
-                    <div className="flex items-center gap-4 text-xs text-neutral-400">
-                        <Link href="/privacy" className="hover:text-white transition-colors">
-                            Privacy Policy
-                        </Link>
-                        <Link href="/terms" className="hover:text-white transition-colors">
-                            Terms of Service
-                        </Link>
-                        <Link href="/sitemap" className="hover:text-white transition-colors">
-                            Sitemap
-                        </Link>
+                    {/* Policy Links (pages not built yet — rendered as text, not links) */}
+                    <div className="flex items-center gap-4 text-xs text-neutral-500">
+                        <span>Privacy Policy</span>
+                        <span>Terms of Service</span>
                     </div>
                 </div>
             </div>
