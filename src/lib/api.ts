@@ -1,5 +1,5 @@
 const BASE_URL =
-  process.env.PUBLIC_API_URL || "https://rentnest-backend-five.vercel.app/api";
+  process.env.NEXT_PUBLIC_API_URL || "https://rentnest-backend-five.vercel.app/api";
 /**
  * Structured API Error Response
  */

@@ -19,7 +19,7 @@ import { RentalRequestForm } from '@/components/forms/RentalRequestForm';
 import { PropertyReviews } from '@/components/reviews/PropertyReviews';
 
 const BASE_URL = (
-    process.env.PUBLIC_API_URL || 'https://rentnest-backend-five.vercel.app/api'
+    process.env.NEXT_PUBLIC_API_URL || 'https://rentnest-backend-five.vercel.app/api'
 ).replace(/\/$/, '');
 
 interface PropertyDetailPageProps {

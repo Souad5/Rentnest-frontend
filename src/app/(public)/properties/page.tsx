@@ -12,7 +12,7 @@ import { AppButton } from '@/components/shared/AppButton';
 import { cn } from '@/lib/utils';
 
 const BASE_URL = (
-    process.env.PUBLIC_API_URL || 'https://rentnest-backend-five.vercel.app/api'
+    process.env.NEXT_PUBLIC_API_URL || 'https://rentnest-backend-five.vercel.app/api'
 ).replace(/\/$/, '');
 
 // Dynamic category filter options matching your API response
