@@ -7,34 +7,26 @@ interface StatCardProps {
     value: React.ReactNode;
     icon: LucideIcon;
     hint?: React.ReactNode;
+    /** Kept for API compatibility; cards are uniformly neutral. */
     tone?: 'primary' | 'highlight' | 'ink' | 'muted';
     loading?: boolean;
     className?: string;
 }
 
-const toneClass = {
-    primary: 'bg-primary/10 text-primary',
-    highlight: 'bg-highlight/20 text-foreground',
-    ink: 'bg-ink text-ink-foreground',
-    muted: 'bg-muted text-muted-foreground',
-};
-
-/** Overview card used on every dashboard. All cards share size, radius and style. */
-export function StatCard({ label, value, icon: Icon, hint, tone = 'primary', loading, className }: StatCardProps) {
+/** Overview card used on every dashboard. Flat, neutral, identical everywhere. */
+export function StatCard({ label, value, icon: Icon, hint, loading, className }: StatCardProps) {
     return (
-        <div className={cn('flex h-full items-start justify-between gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm', className)}>
-            <div className="min-w-0 space-y-1.5">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-                {loading ? (
-                    <Skeleton className="h-8 w-24 rounded-lg" />
-                ) : (
-                    <p className="truncate font-serif text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{value}</p>
-                )}
-                {hint && !loading && <p className="text-xs text-muted-foreground">{hint}</p>}
+        <div className={cn('flex h-full flex-col gap-3 rounded-xl border border-border bg-card p-5', className)}>
+            <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-muted-foreground">{label}</p>
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             </div>
-            <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', toneClass[tone])}>
-                <Icon className="h-5 w-5" />
-            </div>
+            {loading ? (
+                <Skeleton className="h-8 w-24 rounded-md" />
+            ) : (
+                <p className="truncate text-2xl font-semibold tracking-tight text-foreground tabular-nums">{value}</p>
+            )}
+            {hint && !loading && <p className="text-xs text-muted-foreground">{hint}</p>}
         </div>
     );
 }

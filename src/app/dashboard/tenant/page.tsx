@@ -20,22 +20,19 @@ import {
 } from '@/components/dashboard/landlord/shared';
 import { rentalsApi } from '@/lib/api';
 import { formatCompact, formatMoney, formatPrice } from '@/lib/format';
-import { useAuth } from '@/providers/AuthProvider';
 
 export default function TenantOverviewPage() {
-    const { user } = useAuth();
     const statsQuery = useQuery({ queryKey: ['tenant', 'stats'], queryFn: () => rentalsApi.stats().then((r) => r.data) });
     const requestsQuery = useQuery({ queryKey: ['tenant', 'requests'], queryFn: () => rentalsApi.mine().then((r) => r.data) });
 
     const stats = statsQuery.data;
     const loading = statsQuery.isPending;
-    const firstName = user?.name?.split(' ')[0] ?? 'there';
 
     return (
         <div className="space-y-6">
             <DashboardPageHeader
-                title={`Welcome back, ${firstName}`}
-                description="Your rental requests, payments and reviews at a glance."
+                title="Overview"
+                description="Your rental requests, payments and reviews."
                 action={
                     <Button asChild className="h-10 rounded-xl px-4">
                         <Link href="/properties">

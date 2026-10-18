@@ -36,7 +36,7 @@ export default function HelpPage() {
                         <div className="grid gap-10 p-8 sm:p-10 lg:grid-cols-[1.2fr_1fr] lg:p-12">
                             <div className="space-y-5">
                                 <div className="space-y-3">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-highlight">Still need help?</p>
+                                    <p className="text-sm font-medium text-highlight">Still need help?</p>
                                     <h2 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
                                         Talk to us, or ask the assistant
                                     </h2>

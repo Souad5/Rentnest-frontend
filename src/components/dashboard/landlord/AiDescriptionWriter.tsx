@@ -3,7 +3,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
-import { Check, Loader2, Plus, RefreshCw, Sparkles, TriangleAlert, X } from 'lucide-react';
+import { Check, Loader2, Plus, RefreshCw, PenLine, TriangleAlert, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { aiApi, ApiError } from '@/lib/api';
@@ -98,7 +98,7 @@ export function AiDescriptionWriter({ categories }: { categories: Category[] }) 
                     onClick={generate}
                     disabled={mutation.isPending}
                 >
-                    {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
                     {mutation.isPending ? 'Writing…' : result ? 'Regenerate' : 'Write with AI'}
                 </Button>
             </div>
@@ -114,7 +114,7 @@ export function AiDescriptionWriter({ categories }: { categories: Category[] }) 
                 <div className="space-y-4 rounded-2xl border border-primary/30 bg-primary/5 p-4" aria-live="polite">
                     <div className="flex items-center justify-between gap-2">
                         <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                            <Sparkles className="h-4 w-4 text-primary" /> AI draft
+                            <PenLine className="h-4 w-4 text-primary" /> AI draft
                         </p>
                         <Button
                             type="button"

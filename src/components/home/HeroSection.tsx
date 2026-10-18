@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, Building2, ChevronDown, ChevronLeft, ChevronRight, MapPin, Sparkles } from 'lucide-react';
+import { ArrowRight, Building2, ChevronDown, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { AISearchBox } from '@/components/shared/AISearchBox';
 import { Container } from '@/components/shared/Container';
 import { Button } from '@/components/ui/button';
@@ -129,21 +129,13 @@ export function HeroSection({ nextSectionId }: { nextSectionId: string }) {
 
             <Container className="relative py-16 lg:py-0">
                 <div className="max-w-3xl">
-                    <motion.p
-                        initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        className="inline-flex items-center gap-2 rounded-full border border-ink-foreground/20 bg-ink-foreground/10 px-3 py-1 text-xs font-semibold tracking-wide text-ink-foreground backdrop-blur"
-                    >
-                        <Sparkles className="h-3.5 w-3.5 text-highlight" /> AI-assisted home search across Bangladesh
-                    </motion.p>
                     <motion.h1
                         initial={reduceMotion ? false : { opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.05 }}
-                        className="mt-4 font-serif text-4xl font-semibold leading-[1.08] tracking-tight text-ink-foreground sm:text-5xl lg:text-[3.4rem]"
+                        className="text-3xl font-semibold leading-tight tracking-tight text-ink-foreground sm:text-4xl lg:text-5xl"
                     >
-                        Rent a home you&apos;ll love, <span className="text-highlight">without the guesswork.</span>
+                        Find a place to rent in Bangladesh
                     </motion.h1>
                     <motion.p
                         initial={reduceMotion ? false : { opacity: 0, y: 16 }}
@@ -211,7 +203,7 @@ export function HeroSection({ nextSectionId }: { nextSectionId: string }) {
                                 href={`/properties/${current.property.id}`}
                                 className="group inline-flex max-w-sm items-center gap-2 rounded-full border border-ink-foreground/20 bg-ink/50 px-3 py-1.5 text-xs text-ink-foreground backdrop-blur transition-colors hover:bg-ink/70"
                             >
-                                <MapPin className="h-3.5 w-3.5 shrink-0 text-highlight" />
+                                <MapPin className="h-3.5 w-3.5 shrink-0 text-ink-foreground" />
                                 <span className="truncate">
                                     <span className="font-semibold">{current.property.title}</span> · {current.property.location}
                                 </span>
@@ -263,23 +255,6 @@ export function HeroSection({ nextSectionId }: { nextSectionId: string }) {
                     )}
                 </Container>
             </div>
-
-            {/* Scroll cue */}
-            <button
-                type="button"
-                onClick={scrollToNext}
-                aria-label="Scroll to trending homes"
-                className="absolute bottom-4 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-1 text-[11px] font-medium uppercase tracking-[0.2em] text-ink-foreground/75 transition-colors hover:text-ink-foreground lg:flex"
-            >
-                Scroll
-                <motion.span
-                    animate={reduceMotion ? undefined : { y: [0, 6, 0] }}
-                    transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-ink-foreground/30"
-                >
-                    <ChevronDown className="h-4 w-4" />
-                </motion.span>
-            </button>
         </section>
     );
 }

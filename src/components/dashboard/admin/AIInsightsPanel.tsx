@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Info, Loader2, RefreshCw, Sparkles, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Info, Loader2, RefreshCw, Lightbulb, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -65,7 +65,7 @@ export function AIInsightsPanel() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ink text-ink-foreground">
-                        <Sparkles className="h-5 w-5" aria-hidden />
+                        <Lightbulb className="h-5 w-5" aria-hidden />
                     </div>
                     <div>
                         <h2 id="ai-insights-title" className="font-serif text-lg font-semibold tracking-tight text-foreground">
@@ -85,7 +85,7 @@ export function AIInsightsPanel() {
                         onClick={() => insights.mutate()}
                         disabled={insights.isPending || status.isPending}
                     >
-                        {insights.isPending ? <Loader2 className="animate-spin" /> : data ? <RefreshCw /> : <Sparkles />}
+                        {insights.isPending ? <Loader2 className="animate-spin" /> : data ? <RefreshCw /> : <Lightbulb />}
                         {insights.isPending ? 'Analysing…' : data ? 'Regenerate' : 'Generate insights'}
                     </Button>
                 )}

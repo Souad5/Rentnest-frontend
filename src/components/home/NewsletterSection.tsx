@@ -17,10 +17,9 @@ export function NewsletterSection({ tone = 'muted' }: { tone?: SectionTone }) {
             <Container>
                 <Reveal>
                     <div className="relative overflow-hidden rounded-3xl border border-border bg-card px-6 py-10 shadow-sm sm:px-10 sm:py-12">
-                        <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
                         <div className="relative grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Newsletter</p>
+                                <p className="text-sm font-medium text-primary">Newsletter</p>
                                 <h2 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                                     Be first to hear about new homes
                                 </h2>

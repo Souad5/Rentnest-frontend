@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, Loader2, MapPin, Search, Sparkles, Tag } from 'lucide-react';
+import { Building2, Loader2, MapPin, Search, Lightbulb, Tag } from 'lucide-react';
 import { aiApi, toQueryString } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { SearchFilters, SearchSuggestion } from '@/types/api';
@@ -28,7 +28,7 @@ const typeIcon = {
     property: Building2,
     location: MapPin,
     category: Tag,
-    query: Sparkles,
+    query: Lightbulb,
 } as const;
 
 /**
@@ -213,7 +213,7 @@ export function AISearchBox({
                         <span>Suggestions</span>
                         {source === 'ai' && (
                             <span className="inline-flex items-center gap-1 text-primary">
-                                <Sparkles className="h-3 w-3" /> AI-powered
+                                <Lightbulb className="h-3 w-3" /> AI-powered
                             </span>
                         )}
                     </div>

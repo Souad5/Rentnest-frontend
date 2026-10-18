@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronDown, LayoutDashboard, LifeBuoy, LogOut, Menu, ScrollText, ShieldCheck, Sparkles } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LifeBuoy, LogOut, Menu, ScrollText, ShieldCheck, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -90,7 +90,7 @@ export default function Navbar() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg p-2.5">
                                 <Link href="/properties?sort=popular">
-                                    <Sparkles className="h-4 w-4 text-highlight" />
+                                    <TrendingUp className="h-4 w-4 text-highlight" />
                                     <span className="text-sm font-medium">Trending homes</span>
                                 </Link>
                             </DropdownMenuItem>

@@ -15,13 +15,9 @@ export function PageHero({ eyebrow, title, description, align = 'center', childr
     const centered = align === 'center';
     return (
         <section className={cn('relative overflow-hidden border-b border-border bg-muted/40', className)}>
-            <div
-                aria-hidden
-                className="pointer-events-none absolute -top-24 left-1/2 h-64 w-[36rem] max-w-full -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
-            />
             <Container className={cn('relative py-14 sm:py-20', centered && 'text-center')}>
                 <div className={cn('space-y-4', centered && 'mx-auto max-w-3xl')}>
-                    {eyebrow && <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>}
+                    {eyebrow && <p className="text-sm font-medium text-primary">{eyebrow}</p>}
                     <h1 className="font-serif text-4xl font-semibold tracking-tight text-balance text-foreground sm:text-5xl">{title}</h1>
                     {description && (
                         <p

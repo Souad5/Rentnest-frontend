@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { BadgeCheck, Headset, LayoutDashboard, MessageSquareQuote, ShieldCheck, Sparkles } from 'lucide-react';
+import { BadgeCheck, Headset, LayoutDashboard, MessageSquareQuote, ShieldCheck, Search } from 'lucide-react';
 import { Container } from '@/components/shared/Container';
 import { SectionHeading } from '@/components/shared/SectionHeading';
 import { siteConfig } from '@/config/site';
@@ -24,7 +24,7 @@ const FEATURES: Array<{ title: string; body: string; icon: LucideIcon }> = [
     {
         title: 'AI-powered search',
         body: 'Type “3 bed near Dhanmondi Lake under $800” and RentNest extracts the area, bedrooms and budget for you.',
-        icon: Sparkles,
+        icon: Search,
     },
     {
         title: 'Honest reviews from real tenants',

@@ -72,7 +72,7 @@ export function StatsBand() {
             <Container>
                 <div className="mb-10 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-highlight">RentNest in numbers</p>
+                        <p className="text-sm font-medium text-highlight">RentNest in numbers</p>
                         <h2 className="mt-2 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">Live figures, straight from the platform</h2>
                     </div>
                     <p className="max-w-sm text-sm text-ink-foreground/70">Updated in real time from listings, rentals and reviews — never rounded up for show.</p>

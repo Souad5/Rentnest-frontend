@@ -191,7 +191,7 @@ export function ExploreView() {
         <>
             <section className="border-b border-border bg-muted/40">
                 <Container className="py-10 sm:py-14">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Explore rentals</p>
+                    <p className="text-sm font-medium text-primary">Explore rentals</p>
                     <h1 className="mt-3 max-w-3xl font-serif text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
                         Find a home that fits your budget and your commute
                     </h1>

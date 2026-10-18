@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Fraunces, Plus_Jakarta_Sans } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import QueryProvider from '@/providers/QueryProvider';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { ThemeProvider } from '@/providers/ThemeProvider';
@@ -10,12 +10,6 @@ const jakarta = Plus_Jakarta_Sans({
     subsets: ['latin'],
     variable: '--font-jakarta',
     weight: ['400', '500', '600', '700', '800'],
-});
-
-const fraunces = Fraunces({
-    subsets: ['latin'],
-    variable: '--font-fraunces',
-    weight: ['400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {
@@ -30,7 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     return (
         <html lang="en" className="h-full scroll-smooth" data-scroll-behavior="smooth" suppressHydrationWarning>
             <body
-                className={`${jakarta.variable} ${fraunces.variable} font-sans antialiased min-h-full flex flex-col bg-background text-foreground`}
+                className={`${jakarta.variable} font-sans antialiased min-h-full flex flex-col bg-background text-foreground`}
                 suppressHydrationWarning
             >
                 <ThemeProvider>

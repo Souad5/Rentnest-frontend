@@ -5,23 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-    AlertCircle,
-    ArrowUp,
-    BedDouble,
-    Building2,
-    Home,
-    LifeBuoy,
-    Loader2,
-    Mail,
-    MapPin,
-    MessageCircle,
-    RotateCcw,
-    Sparkles,
-    Star,
-    Trash2,
-    X,
-} from 'lucide-react';
+import { AlertCircle, ArrowUp, BedDouble, Building2, Home, LifeBuoy, Loader2, Mail, MapPin, MessageCircle, RotateCcw, Bot, Star, Trash2, X } from 'lucide-react';
 import { aiApi, ApiError } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { coverImage, canOptimizeImage } from '@/lib/images';
@@ -145,7 +129,7 @@ function TypingIndicator() {
     return (
         <div className="flex items-center gap-2" role="status" aria-label="Assistant is typing">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Sparkles className="h-3.5 w-3.5" />
+                <Bot className="h-3.5 w-3.5" />
             </span>
             <span className="flex items-center gap-1 rounded-2xl rounded-tl-md bg-muted px-3.5 py-3">
                 {[0, 1, 2].map((i) => (
@@ -341,14 +325,13 @@ export function ChatAssistant() {
                         aria-hidden={atPageBottom || undefined}
                         tabIndex={atPageBottom ? -1 : 0}
                         className={cn(
-                            'fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 inline-flex h-14 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/40 sm:right-6 sm:bottom-6 sm:px-5',
+                            'fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:right-6 sm:bottom-6',
                             atPageBottom && 'pointer-events-none',
                             // Property details pages show a sticky booking bar on mobile/tablet; sit above it.
                             onPropertyDetail && 'max-lg:bottom-[calc(5.5rem+env(safe-area-inset-bottom))]',
                         )}
                     >
-                        <Sparkles className="h-5 w-5" />
-                        <span className="hidden sm:inline">Ask AI</span>
+                        <Bot className="h-5 w-5" />
                     </motion.button>
                 )}
             </AnimatePresence>
@@ -369,7 +352,7 @@ export function ChatAssistant() {
                         {/* Header */}
                         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                                <Sparkles className="h-4 w-4" />
+                                <Bot className="h-4 w-4" />
                             </span>
                             <div className="min-w-0 flex-1">
                                 <h2 id="chat-assistant-title" className="truncate text-sm font-semibold text-foreground">
@@ -461,7 +444,7 @@ export function ChatAssistant() {
                                     {/* Welcome */}
                                     <div className="flex gap-2">
                                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                            <Sparkles className="h-3.5 w-3.5" />
+                                            <Bot className="h-3.5 w-3.5" />
                                         </span>
                                         <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-muted px-3.5 py-2.5 text-sm text-foreground">
                                             <p className="leading-relaxed">
@@ -497,7 +480,7 @@ export function ChatAssistant() {
                                         ) : (
                                             <div key={m.id} className="flex gap-2">
                                                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                                    <Sparkles className="h-3.5 w-3.5" />
+                                                    <Bot className="h-3.5 w-3.5" />
                                                 </span>
                                                 <div className="min-w-0 max-w-[85%] space-y-2">
                                                     <div className="rounded-2xl rounded-tl-md bg-muted px-3.5 py-2.5 text-sm break-words text-foreground">

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { openChatAssistant } from '@/components/ai/chat-events';
 import { useRouter } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowRight, LoaderCircle, MessageCircleMore, Search, Sparkles, WandSparkles } from 'lucide-react';
+import { ArrowRight, LoaderCircle, MessageCircleMore, Search, Lightbulb, PenLine } from 'lucide-react';
 import { Container } from '@/components/shared/Container';
 import { SectionHeading } from '@/components/shared/SectionHeading';
 import { aiApi, toQueryString } from '@/lib/api';
@@ -50,7 +50,7 @@ const FEATURES: Array<{ title: string; body: string; where: React.ReactNode; ico
                 Open the listing writer
             </Link>
         ),
-        icon: WandSparkles,
+        icon: PenLine,
     },
 ];
 
@@ -134,13 +134,11 @@ export function AIShowcase() {
 
                     <Reveal delay={0.1} className="lg:sticky lg:top-24">
                         <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-lg sm:p-8">
-                            <div aria-hidden className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
-                            <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-highlight/15 blur-3xl" />
 
                             <div className="relative">
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <p className="inline-flex items-center gap-2 font-serif text-xl font-semibold tracking-tight text-foreground">
-                                        <Sparkles className="h-5 w-5 text-primary" /> Try it now
+                                        <Lightbulb className="h-5 w-5 text-primary" /> Try it now
                                     </p>
                                     {aiEnabled !== null && (
                                         <span
@@ -191,7 +189,7 @@ export function AIShowcase() {
                                     </button>
                                 </form>
 
-                                <p className="mt-6 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Or tap an example</p>
+                                <p className="mt-6 text-sm font-medium text-muted-foreground">Or tap an example</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {EXAMPLES.map((example) => {
                                         const loading = pending === example;

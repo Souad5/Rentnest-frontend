@@ -1,6 +1,6 @@
 'use client';
 
-import { Sparkles } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { openChatAssistant } from './chat-events';
 
@@ -23,7 +23,7 @@ export function OpenChatButton({
                 className,
             )}
         >
-            <Sparkles className="h-4 w-4" />
+            <MessageCircle className="h-4 w-4" />
             {children}
         </button>
     );

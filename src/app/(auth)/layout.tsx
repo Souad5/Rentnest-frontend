@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { CalendarCheck, LayoutDashboard, ShieldCheck, Sparkles } from 'lucide-react';
+import { CalendarCheck, LayoutDashboard, ShieldCheck, Bot } from 'lucide-react';
 import { Logo } from '@/components/shared/Logo';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { siteConfig } from '@/config/site';
@@ -22,7 +22,7 @@ const valueProps = [
         text: 'Requests, approvals, payments and reviews — for tenants and landlords alike.',
     },
     {
-        icon: Sparkles,
+        icon: Bot,
         title: 'An AI assistant that knows the listings',
         text: 'Describe the home you want and get matching available properties in seconds.',
     },
@@ -71,7 +71,7 @@ export default function AuthLayout({ children }: Readonly<{ children: React.Reac
                 <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/85 to-ink/40" aria-hidden />
                 <div className="relative flex h-full flex-col justify-end gap-10 p-10 xl:p-14">
                     <div className="space-y-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-highlight">{siteConfig.name}</p>
+                        <p className="text-sm font-medium text-highlight">{siteConfig.name}</p>
                         <h2 className="max-w-md font-serif text-4xl font-semibold leading-tight tracking-tight">
                             {siteConfig.tagline}.
                         </h2>

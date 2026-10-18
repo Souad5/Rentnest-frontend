@@ -426,10 +426,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <TooltipProvider delayDuration={0}>
             <SidebarProvider>
                 <DashboardSidebar user={user} pathname={pathname} />
-                <SidebarInset className="min-w-0 bg-muted/30">
+                <SidebarInset className="min-w-0 bg-muted/40">
                     <TopBar user={user} pathname={pathname} />
-                    <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-                        <div className="mx-auto w-full max-w-7xl">
+                    <div className="flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+                        <div className="w-full">
                             {allowedRoles ? <RoleGuard allowedRoles={allowedRoles}>{children}</RoleGuard> : children}
                         </div>
                     </div>

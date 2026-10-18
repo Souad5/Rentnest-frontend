@@ -1,20 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import {
-    BadgeCheck,
-    Building2,
-    CalendarCheck,
-    CreditCard,
-    Eye,
-    HeartHandshake,
-    LayoutDashboard,
-    MessageSquareText,
-    Search,
-    ShieldCheck,
-    Sparkles,
-    Star,
-} from 'lucide-react';
+import { BadgeCheck, Building2, CalendarCheck, CreditCard, Eye, HeartHandshake, LayoutDashboard, MessageSquareText, Search, ShieldCheck, UserPlus, Star } from 'lucide-react';
 import { Container } from '@/components/shared/Container';
 import { SectionHeading } from '@/components/shared/SectionHeading';
 import { PageHero } from '@/components/content/PageHero';
@@ -161,7 +148,7 @@ export default function AboutPage() {
                 <Container>
                     <div className="flex flex-col items-start gap-8 rounded-2xl bg-ink p-8 text-ink-foreground shadow-sm sm:p-12 lg:flex-row lg:items-center lg:justify-between">
                         <div className="max-w-2xl space-y-3">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-highlight">Get started</p>
+                            <p className="text-sm font-medium text-highlight">Get started</p>
                             <h2 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
                                 Your next home — or your next tenant — is a request away.
                             </h2>
@@ -174,7 +161,7 @@ export default function AboutPage() {
                                 href="/register"
                                 className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                             >
-                                <Sparkles className="h-4 w-4" /> Create free account
+                                <UserPlus className="h-4 w-4" /> Create free account
                             </Link>
                             <Link
                                 href="/contact"

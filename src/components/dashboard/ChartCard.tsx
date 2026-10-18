@@ -16,7 +16,7 @@ interface ChartCardProps {
 /** Card wrapper for recharts charts: consistent header, fixed height, loading + empty states. */
 export function ChartCard({ title, description, loading, empty, emptyMessage = 'No data yet.', action, className, children }: ChartCardProps) {
     return (
-        <section className={cn('flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm', className)}>
+        <section className={cn('flex flex-col rounded-xl border border-border bg-card p-5', className)}>
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                     <h3 className="text-sm font-semibold text-foreground">{title}</h3>

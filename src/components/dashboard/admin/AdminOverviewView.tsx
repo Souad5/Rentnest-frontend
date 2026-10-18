@@ -21,7 +21,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { adminApi } from '@/lib/api';
 import { formatDate, formatMoney, initials } from '@/lib/format';
-import { useAuth } from '@/providers/AuthProvider';
 import type { AdminStats, AdminUser, ApiEnvelope } from '@/types/api';
 import { AdminCharts } from './AdminCharts';
 import { AIInsightsPanel } from './AIInsightsPanel';
@@ -195,7 +194,6 @@ function LatestRentals() {
 }
 
 export function AdminOverviewView() {
-    const { user } = useAuth();
     const query = useAdminQuery<AdminStats>(adminKeys.stats, adminApi.stats);
     const t = query.data?.totals;
     const loading = query.isPending;
@@ -203,8 +201,8 @@ export function AdminOverviewView() {
     return (
         <div className="space-y-6">
             <DashboardPageHeader
-                title={user?.name ? `Welcome back, ${user.name.split(' ')[0]}` : 'Admin overview'}
-                description="Platform health across users, listings, rentals and revenue."
+                title="Overview"
+                description="Users, listings, rentals and revenue."
             />
 
             {query.isError ? (

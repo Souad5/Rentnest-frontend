@@ -68,7 +68,7 @@ export default async function BlogArticlePage({ params }: { params: Params }) {
                             >
                                 <ArrowLeft className="h-4 w-4" /> All articles
                             </Link>
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{post.category}</p>
+                            <p className="text-sm font-medium text-primary">{post.category}</p>
                             <h1 className="font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-5xl">
                                 {post.title}
                             </h1>

@@ -21,26 +21,23 @@ import {
 } from '@/components/dashboard/landlord/shared';
 import { landlordApi } from '@/lib/api';
 import { formatPrice } from '@/lib/format';
-import { useAuth } from '@/providers/AuthProvider';
 
 function truncate(text: string, max = 22) {
     return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
 export default function LandlordOverviewPage() {
-    const { user } = useAuth();
     const statsQuery = useQuery({ queryKey: ['landlord', 'stats'], queryFn: () => landlordApi.stats().then((r) => r.data) });
     const requestsQuery = useQuery({ queryKey: ['landlord', 'requests'], queryFn: () => landlordApi.requests().then((r) => r.data) });
 
     const stats = statsQuery.data;
     const loading = statsQuery.isPending;
-    const firstName = user?.name?.split(' ')[0] ?? 'there';
     const topProperties = (stats?.topProperties ?? []).map((p) => ({ ...p, short: truncate(p.title) }));
 
     return (
         <div className="space-y-6">
             <DashboardPageHeader
-                title={`Welcome back, ${firstName}`}
+                title="Overview"
                 description="How your listings, requests and earnings are doing."
                 action={
                     <Button asChild className="h-10 rounded-xl px-4">

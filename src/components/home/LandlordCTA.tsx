@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, CheckCircle2, ClipboardCheck, LayoutDashboard, MessageCircle, WandSparkles, Wallet } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ClipboardCheck, LayoutDashboard, MessageCircle, PenLine, Wallet } from 'lucide-react';
 import { Container } from '@/components/shared/Container';
 import { Button } from '@/components/ui/button';
 import { dashboardHomeFor } from '@/config/site';
@@ -17,7 +17,7 @@ const POINTS = [
 ];
 
 const TOOLS = [
-    { icon: WandSparkles, label: 'AI listing writer' },
+    { icon: PenLine, label: 'AI listing writer' },
     { icon: ClipboardCheck, label: 'Request queue' },
     { icon: Wallet, label: 'Payment history' },
     { icon: LayoutDashboard, label: 'Earnings dashboard' },
@@ -41,7 +41,7 @@ export function LandlordCTA() {
                 <Reveal>
                     <div className="grid overflow-hidden rounded-3xl bg-primary text-primary-foreground shadow-lg lg:grid-cols-2">
                         <div className="p-7 sm:p-10 lg:p-12">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/75">For landlords</p>
+                            <p className="text-sm font-medium text-primary-foreground/75">For landlords</p>
                             <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
                                 {user?.role === 'LANDLORD'
                                     ? `Welcome back, ${user.name.split(' ')[0]}. Your tenants are waiting.`
@@ -90,7 +90,7 @@ export function LandlordCTA() {
                             />
                             <div className="absolute inset-0 bg-linear-to-t from-ink/60 via-transparent to-transparent lg:bg-linear-to-r lg:from-primary/40 lg:via-transparent" />
                             <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-border bg-card/95 p-4 text-card-foreground shadow-lg backdrop-blur sm:left-auto sm:w-72">
-                                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Included for every landlord</p>
+                                <p className="text-sm font-medium text-muted-foreground">Included for every landlord</p>
                                 <ul className="mt-3 grid grid-cols-2 gap-2.5">
                                     {TOOLS.map(({ icon: Icon, label }) => (
                                         <li key={label} className="flex items-center gap-2 text-xs font-medium text-foreground">

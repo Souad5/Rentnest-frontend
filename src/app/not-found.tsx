@@ -18,7 +18,7 @@ export default function NotFound() {
                     <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                         <Compass className="h-8 w-8" />
                     </span>
-                    <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Error 404</p>
+                    <p className="mt-6 text-sm font-medium text-primary">Error 404</p>
                     <h1 className="mt-3 font-serif text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
                         This page has moved out
                     </h1>
