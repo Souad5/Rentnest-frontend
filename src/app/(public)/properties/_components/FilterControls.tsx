@@ -50,7 +50,7 @@ export function FilterControls({ values, categories, locations, optionsLoading, 
                     onValueChange={(v) => onChange('categoryId', v === ANY ? null : v)}
                     disabled={optionsLoading && categories.length === 0}
                 >
-                    <SelectTrigger id={`${uid}-category`} className="h-10 w-full rounded-xl bg-background">
+                    <SelectTrigger id={`${uid}-category`} className="h-10 data-[size=default]:h-10 w-full rounded-xl bg-background">
                         <SelectValue placeholder="All categories" />
                     </SelectTrigger>
                     <SelectContent position="popper">
@@ -77,7 +77,7 @@ export function FilterControls({ values, categories, locations, optionsLoading, 
                     onValueChange={(v) => onChange('location', v === ANY ? null : v)}
                     disabled={optionsLoading && locationOptions.length === 0}
                 >
-                    <SelectTrigger id={`${uid}-location`} className="h-10 w-full rounded-xl bg-background">
+                    <SelectTrigger id={`${uid}-location`} className="h-10 data-[size=default]:h-10 w-full rounded-xl bg-background">
                         <SelectValue placeholder="Anywhere" />
                     </SelectTrigger>
                     <SelectContent position="popper" className="max-h-72">
@@ -121,7 +121,7 @@ export function FilterControls({ values, categories, locations, optionsLoading, 
 
             <Field label="Bedrooms" htmlFor={`${uid}-beds`}>
                 <Select value={values.bedrooms || ANY} onValueChange={(v) => onChange('bedrooms', v === ANY ? null : v)}>
-                    <SelectTrigger id={`${uid}-beds`} className="h-10 w-full rounded-xl bg-background">
+                    <SelectTrigger id={`${uid}-beds`} className="h-10 data-[size=default]:h-10 w-full rounded-xl bg-background">
                         <SelectValue placeholder="Any" />
                     </SelectTrigger>
                     <SelectContent position="popper">
@@ -137,7 +137,7 @@ export function FilterControls({ values, categories, locations, optionsLoading, 
 
             <Field label="Minimum rating" htmlFor={`${uid}-rating`}>
                 <Select value={values.minRating || ANY} onValueChange={(v) => onChange('minRating', v === ANY ? null : v)}>
-                    <SelectTrigger id={`${uid}-rating`} className="h-10 w-full rounded-xl bg-background">
+                    <SelectTrigger id={`${uid}-rating`} className="h-10 data-[size=default]:h-10 w-full rounded-xl bg-background">
                         <SelectValue placeholder="Any" />
                     </SelectTrigger>
                     <SelectContent position="popper">

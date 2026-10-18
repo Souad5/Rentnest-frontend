@@ -257,7 +257,7 @@ export function ExploreView() {
                                     Sort by
                                 </Label>
                                 <Select value={state.sort} onValueChange={(v) => setParams({ sort: v })}>
-                                    <SelectTrigger id="explore-sort" className="h-10 w-[180px] rounded-xl bg-background">
+                                    <SelectTrigger id="explore-sort" className="h-10 data-[size=default]:h-10 w-[180px] rounded-xl bg-background">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent position="popper" align="end">
@@ -275,7 +275,7 @@ export function ExploreView() {
                                     Results per page
                                 </Label>
                                 <Select value={String(state.limit)} onValueChange={(v) => setParams({ limit: v })}>
-                                    <SelectTrigger id="explore-limit" className="h-10 w-[110px] rounded-xl bg-background">
+                                    <SelectTrigger id="explore-limit" className="h-10 data-[size=default]:h-10 w-[110px] rounded-xl bg-background">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent position="popper" align="end">
