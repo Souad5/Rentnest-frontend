@@ -2,61 +2,52 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
 
 interface ErrorProps {
     error: Error & { digest?: string };
     reset: () => void;
 }
 
-export default function Error({ error, reset }: ErrorProps) {
+export default function ErrorPage({ error, reset }: ErrorProps) {
     useEffect(() => {
-        console.error('Unhandled Runtime Error:', error);
+        console.error('Unhandled runtime error:', error);
     }, [error]);
 
     return (
-        <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-12 text-center">
-            <div className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-card p-8 shadow-lg">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-                    <AlertTriangle className="h-8 w-8" />
-                </div>
-
-                <div className="space-y-2">
-                    <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                        Something went wrong!
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                        An unexpected error occurred while loading this page. Please try again or return to the homepage.
+        <div className="flex min-h-[70vh] flex-1 items-center justify-center bg-background px-4 py-12">
+            <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+                    <AlertTriangle className="h-7 w-7" />
+                </span>
+                <h1 className="mt-5 font-serif text-3xl font-semibold tracking-tight text-foreground">Something went wrong</h1>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                    An unexpected error stopped this page from loading. Please try again — if it keeps happening, contact our
+                    support team.
+                </p>
+                {error.digest && (
+                    <p className="mt-4 inline-block rounded-lg bg-muted px-2.5 py-1 font-mono text-xs text-muted-foreground">
+                        Reference: {error.digest}
                     </p>
-                    {error.digest && (
-                        <p className="mt-2 inline-block rounded bg-muted/50 px-2 py-1 font-mono text-xs text-muted-foreground/70">
-                            Error Digest: {error.digest}
-                        </p>
-                    )}
-                </div>
-
-                <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-center">
-                    <Button
+                )}
+                <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+                    <button
+                        type="button"
                         onClick={() => reset()}
-                        variant="default"
-                        className="flex w-full items-center justify-center gap-2 sm:w-auto"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                     >
-                        <RefreshCw className="h-4 w-4" />
-                        Try Again
-                    </Button>
-
-                    <Button
-                        asChild
-                        variant="outline"
-                        className="flex w-full items-center justify-center gap-2 sm:w-auto"
+                        <RefreshCw className="h-4 w-4" /> Try again
+                    </button>
+                    <Link
+                        href="/"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 text-sm font-semibold text-foreground hover:bg-muted"
                     >
-                        <Link href="/">
-                            <Home className="h-4 w-4" />
-                            Go to Homepage
-                        </Link>
-                    </Button>
+                        <Home className="h-4 w-4" /> Go to homepage
+                    </Link>
                 </div>
+                <Link href="/contact" className="mt-5 inline-block text-sm font-medium text-primary hover:underline">
+                    Contact support
+                </Link>
             </div>
         </div>
     );

@@ -1,32 +1,52 @@
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 export type StatusType =
     | 'AVAILABLE'
     | 'RENTED'
     | 'PENDING'
+    | 'APPROVED'
+    | 'REJECTED'
+    | 'ACTIVE'
     | 'COMPLETED'
     | 'FAILED'
-    | 'ACTIVE'
-    | 'SUSPENDED';
+    | 'SUSPENDED'
+    | 'BANNED'
+    | 'READ'
+    | 'UNREAD';
+
+// Status colors stay inside the brand palette: teal = good, amber = waiting,
+// red (destructive) = bad, muted = neutral/closed.
+const tone: Record<StatusType, string> = {
+    AVAILABLE: 'border-primary/30 bg-primary/10 text-primary',
+    ACTIVE: 'border-primary/30 bg-primary/10 text-primary',
+    APPROVED: 'border-primary/30 bg-primary/10 text-primary',
+    COMPLETED: 'border-primary/30 bg-primary/10 text-primary',
+    READ: 'border-border bg-muted text-muted-foreground',
+    PENDING: 'border-highlight/40 bg-highlight/15 text-foreground',
+    UNREAD: 'border-highlight/40 bg-highlight/15 text-foreground',
+    RENTED: 'border-border bg-muted text-muted-foreground',
+    REJECTED: 'border-destructive/30 bg-destructive/10 text-destructive',
+    FAILED: 'border-destructive/30 bg-destructive/10 text-destructive',
+    SUSPENDED: 'border-destructive/30 bg-destructive/10 text-destructive',
+    BANNED: 'border-destructive/30 bg-destructive/10 text-destructive',
+};
 
 interface StatusBadgeProps {
-    status: StatusType;
+    status: StatusType | string;
+    className?: string;
 }
 
-export default function StatusBadge({ status }: StatusBadgeProps) {
-    const styles: Record<StatusType, string> = {
-        AVAILABLE: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
-        ACTIVE: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
-        COMPLETED: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
-        PENDING: 'bg-amber-500/10 text-amber-600 border-amber-200',
-        RENTED: 'bg-slate-500/10 text-slate-600 border-slate-200',
-        FAILED: 'bg-rose-500/10 text-rose-600 border-rose-200',
-        SUSPENDED: 'bg-rose-500/10 text-rose-600 border-rose-200',
-    };
-
+export default function StatusBadge({ status, className }: StatusBadgeProps) {
+    const key = status.toUpperCase() as StatusType;
     return (
-        <Badge variant="outline" className={`${styles[status]} font-medium text-xs px-2 py-0.5`}>
-            {status}
+        <Badge
+            variant="outline"
+            className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium capitalize', tone[key] ?? tone.RENTED, className)}
+        >
+            {status.toLowerCase()}
         </Badge>
     );
 }
+
+export { StatusBadge };

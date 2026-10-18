@@ -1,284 +1,424 @@
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
+    Bath,
+    BedDouble,
+    Building2,
+    CalendarDays,
+    Check,
+    ChevronRight,
+    ExternalLink,
+    Home,
     MapPin,
-    ArrowLeft,
-    Calendar,
-    CheckCircle2,
-    ShieldCheck,
-    Share2,
-    Heart,
-    Tag,
+    Ruler,
+    Star,
 } from 'lucide-react';
-import { AppButton } from '@/components/shared/AppButton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import StatusBadge from '@/components/shared/StatusBadge';
-import { PropertyGallery } from '@/components/shared/PropertyGallery';
+
 import { RentalRequestForm } from '@/components/forms/RentalRequestForm';
 import { PropertyReviews } from '@/components/reviews/PropertyReviews';
+import { Container } from '@/components/shared/Container';
+import { PropertyGallery } from '@/components/shared/PropertyGallery';
+import { SectionHeading } from '@/components/shared/SectionHeading';
+import StatusBadge from '@/components/shared/StatusBadge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ApiError, propertiesApi } from '@/lib/api';
+import { formatDate, formatPrice, initials } from '@/lib/format';
+import { coverImage, propertyImages } from '@/lib/images';
+import type { PropertyDetail } from '@/types/api';
 
-const BASE_URL = (
-    process.env.NEXT_PUBLIC_API_URL || 'https://rentnest-backend-five.vercel.app/api'
-).replace(/\/$/, '');
+import { MobileBookingBar } from './_components/MobileBookingBar';
+import { PropertyLoadError } from './_components/PropertyLoadError';
+import { RelatedProperties } from './_components/RelatedProperties';
+import { ShareButton } from './_components/ShareButton';
 
-interface PropertyDetailPageProps {
+interface PageProps {
     params: Promise<{ id: string }>;
-    searchParams?: Promise<{ moveIn?: string; moveOut?: string }>;
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export interface CategoryData {
-    id: string;
-    name: string;
-}
+type LoadResult =
+    | { status: 'ok'; property: PropertyDetail }
+    | { status: 'not-found' }
+    | { status: 'error'; message: string };
 
-export interface LandlordData {
-    id: string;
-    name: string;
-    email: string;
-}
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export interface PropertyDetail {
-    id: string;
-    title: string;
-    description: string;
-    address: string;
-    location: string;
-    price: number;
-    isAvailable: boolean;
-    landlordId: string;
-    categoryId: string;
-    createdAt: string;
-    updatedAt: string;
-    category?: CategoryData;
-    landlord?: LandlordData;
-    images?: string[];
-    imageUrl?: string | null;
-}
-
-const DEFAULT_AMENITIES = [
-    'In-Unit Washer & Dryer',
-    'Air Conditioning & Heating',
-    'High-Speed Wi-Fi Ready',
-    'Private Balcony / Terrace',
-    'Pet Friendly',
-    'Assigned Parking Space',
-    'Stainless Steel Appliances',
-    'Hardwood Flooring',
-];
-
-async function getPropertyDetail(id: string): Promise<PropertyDetail | null> {
+// Deduped between generateMetadata and the page render.
+const loadProperty = cache(async (id: string): Promise<LoadResult> => {
+    if (!UUID_RE.test(id)) return { status: 'not-found' };
     try {
-        const res = await fetch(`${BASE_URL}/properties/${id}`, {
-            cache: 'no-store',
-        });
-
-        if (!res.ok) {
-            if (res.status === 404) return null;
-            throw new Error(`Failed to fetch property details (Status ${res.status})`);
-        }
-
-        const json = await res.json();
-        return json.data || json;
+        const res = await propertiesApi.detail(id);
+        if (!res?.data) return { status: 'not-found' };
+        return { status: 'ok', property: res.data };
     } catch (err) {
-        console.error('Error fetching property detail:', err);
-        return null;
+        if (err instanceof ApiError && (err.status === 404 || err.status === 400)) return { status: 'not-found' };
+        return {
+            status: 'error',
+            message: err instanceof ApiError && err.status < 500 ? err.message : '',
+        };
     }
+});
+
+const firstParam = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+function truncate(text: string, max: number) {
+    const clean = text.replace(/\s+/g, ' ').trim();
+    return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
 }
 
-export default async function PropertyDetailPage({ params, searchParams }: PropertyDetailPageProps) {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { id } = await params;
-    const property = await getPropertyDetail(id);
+    const result = await loadProperty(id);
+    if (result.status === 'not-found') return { title: 'Property not found' };
+    if (result.status === 'error') return { title: 'Property' };
 
-    if (!property) {
-        notFound();
-    }
+    const p = result.property;
+    const facts = [
+        p.bedrooms != null ? `${p.bedrooms} bed` : null,
+        p.bathrooms != null ? `${p.bathrooms} bath` : null,
+        p.category?.name,
+        `${formatPrice(p.price)}/month`,
+    ]
+        .filter(Boolean)
+        .join(' · ');
+    const description = truncate(`${facts} in ${p.location}. ${p.description}`, 160);
+    const image = coverImage(p);
 
-    const query = searchParams ? await searchParams : {};
-    const parseDateParam = (value?: string) => {
-        if (!value) return undefined;
-        const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+    return {
+        title: `${p.title} in ${p.location}`,
+        description,
+        openGraph: {
+            title: `${p.title} · ${p.location}`,
+            description,
+            type: 'website',
+            images: image ? [{ url: image, alt: p.title }] : undefined,
+        },
+        twitter: {
+            card: image ? 'summary_large_image' : 'summary',
+            title: `${p.title} · ${p.location}`,
+            description,
+            images: image ? [image] : undefined,
+        },
     };
-    const defaultStartDate = parseDateParam(query.moveIn);
-    const defaultEndDate = defaultStartDate ? parseDateParam(query.moveOut) : undefined;
+}
 
-    const galleryImages = [
-        ...(property.imageUrl ? [property.imageUrl] : []),
-        ...(property.images ?? []),
+export default async function PropertyDetailPage({ params, searchParams }: PageProps) {
+    const { id } = await params;
+    const result = await loadProperty(id);
+    if (result.status === 'not-found') notFound();
+    if (result.status === 'error') return <PropertyLoadError message={result.message} />;
+
+    const property = result.property;
+    const query = await searchParams;
+    const moveIn = firstParam(query.moveIn);
+    const moveOut = firstParam(query.moveOut);
+    const datesQuery = new URLSearchParams();
+    if (moveIn) datesQuery.set('moveIn', moveIn);
+    if (moveOut) datesQuery.set('moveOut', moveOut);
+
+    const images = propertyImages(property);
+    const amenities = property.amenities ?? [];
+    const hasReviews = property.reviewCount > 0;
+    const fullAddress = [property.address, property.location].filter(Boolean).join(', ');
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
+    const dash = '—';
+
+    const specs: Array<{ label: string; value: React.ReactNode }> = [
+        { label: 'Monthly rent', value: `${formatPrice(property.price)} / month` },
+        { label: 'Category', value: property.category?.name ?? dash },
+        { label: 'Bedrooms', value: property.bedrooms ?? dash },
+        { label: 'Bathrooms', value: property.bathrooms ?? dash },
+        { label: 'Floor area', value: property.areaSqft != null ? `${property.areaSqft.toLocaleString('en-US')} sqft` : dash },
+        { label: 'Location', value: property.location || dash },
+        { label: 'Address', value: property.address || dash },
+        { label: 'Availability', value: <StatusBadge status={property.isAvailable ? 'AVAILABLE' : 'RENTED'} /> },
+        { label: 'Listed on', value: formatDate(property.createdAt) },
+        {
+            label: 'Tenant rating',
+            value: hasReviews
+                ? `${property.avgRating.toFixed(1)} / 5 (${property.reviewCount} ${property.reviewCount === 1 ? 'review' : 'reviews'})`
+                : 'No reviews yet',
+        },
     ];
-    const images =
-        galleryImages.length > 0
-            ? galleryImages
-            : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750'];
 
-    const isAvailable = property.isAvailable ?? true;
-    const formattedDate = property.createdAt
-        ? new Date(property.createdAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-        })
-        : 'Recently';
-
-    const landlordName = property.landlord?.name || 'Landlord Partner';
-    const landlordInitials = landlordName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase();
+    const quickFacts = [
+        property.bedrooms != null && {
+            icon: BedDouble,
+            label: `${property.bedrooms} ${property.bedrooms === 1 ? 'bedroom' : 'bedrooms'}`,
+        },
+        property.bathrooms != null && {
+            icon: Bath,
+            label: `${property.bathrooms} ${property.bathrooms === 1 ? 'bathroom' : 'bathrooms'}`,
+        },
+        property.areaSqft != null && { icon: Ruler, label: `${property.areaSqft.toLocaleString('en-US')} sqft` },
+        property.category?.name && { icon: Building2, label: property.category.name },
+    ].filter(Boolean) as Array<{ icon: typeof BedDouble; label: string }>;
 
     return (
-        <div className="space-y-8 py-6 max-w-7xl mx-auto px-4 sm:px-6">
-            {/* Top Navigation Bar */}
-            <div className="flex items-center justify-between">
-                <AppButton asChild variant="ghost" size="sm" className="gap-2">
-                    <Link href="/properties">
-                        <ArrowLeft className="h-4 w-4" /> Back to Properties
-                    </Link>
-                </AppButton>
-                <div className="flex items-center gap-2">
-                    <AppButton variant="outline" size="icon" aria-label="Share listing">
-                        <Share2 className="h-4 w-4" />
-                    </AppButton>
-                    <AppButton variant="outline" size="icon" aria-label="Save listing">
-                        <Heart className="h-4 w-4" />
-                    </AppButton>
+        <div>
+            <Container className="pt-6 sm:pt-8">
+                {/* Breadcrumbs + share */}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <nav aria-label="Breadcrumb" className="min-w-0">
+                        <ol className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+                            <li>
+                                <Link href="/" className="inline-flex items-center gap-1 hover:text-foreground">
+                                    <Home className="h-3.5 w-3.5" /> Home
+                                </Link>
+                            </li>
+                            <li aria-hidden>
+                                <ChevronRight className="h-3.5 w-3.5" />
+                            </li>
+                            <li>
+                                <Link href="/properties" className="hover:text-foreground">
+                                    Explore
+                                </Link>
+                            </li>
+                            <li aria-hidden>
+                                <ChevronRight className="h-3.5 w-3.5" />
+                            </li>
+                            <li className="min-w-0">
+                                <span aria-current="page" className="block max-w-[12rem] truncate font-medium text-foreground sm:max-w-md">
+                                    {property.title}
+                                </span>
+                            </li>
+                        </ol>
+                    </nav>
+                    <ShareButton title={property.title} text={`${property.title} in ${property.location} on RentNest`} />
                 </div>
-            </div>
 
-            {/* Photo Gallery */}
-            <PropertyGallery
-                images={images}
-                title={property.title}
-                badge={<StatusBadge status={isAvailable ? 'AVAILABLE' : 'RENTED'} />}
-            />
-
-            {/* Content & Action Sidebar */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Details */}
-                <div className="lg:col-span-2 space-y-8">
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-                            <div className="flex items-center gap-1.5">
-                                <MapPin className="h-4 w-4 text-primary shrink-0" />
-                                <span>
-                                    {property.address ? `${property.address}, ` : ''}
-                                    {property.location}
-                                </span>
-                            </div>
-                            {property.category && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary">
-                                    <Tag className="h-3 w-3" />
-                                    {property.category.name}
-                                </span>
+                {/* Title */}
+                <header className="mt-6 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                        {property.category?.name && (
+                            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                                {property.category.name}
+                            </span>
+                        )}
+                        <StatusBadge status={property.isAvailable ? 'AVAILABLE' : 'RENTED'} />
+                    </div>
+                    <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+                        {property.title}
+                    </h1>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                            <MapPin className="h-4 w-4 text-primary" />
+                            {fullAddress}
+                        </span>
+                        <a href="#reviews" className="inline-flex items-center gap-1.5 hover:text-foreground">
+                            <Star className={hasReviews ? 'h-4 w-4 fill-highlight text-highlight' : 'h-4 w-4'} />
+                            {hasReviews ? (
+                                <>
+                                    <span className="font-semibold text-foreground">{property.avgRating.toFixed(1)}</span>
+                                    <span>
+                                        ({property.reviewCount} {property.reviewCount === 1 ? 'review' : 'reviews'})
+                                    </span>
+                                </>
+                            ) : (
+                                'No reviews yet'
                             )}
-                        </div>
-                        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-                            {property.title}
-                        </h1>
-                        <p className="text-3xl font-bold text-primary">
-                            ${property.price}
-                            <span className="text-base font-normal text-muted-foreground"> / month</span>
-                        </p>
+                        </a>
                     </div>
+                </header>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 rounded-xl border border-border bg-card p-4 text-center">
-                        <div className="flex flex-col items-center justify-center p-2">
-                            <Tag className="h-5 w-5 text-primary mb-1" />
-                            <span className="text-base font-bold truncate max-w-full">
-                                {property.category?.name || 'N/A'}
-                            </span>
-                            <span className="text-xs text-muted-foreground">Category</span>
-                        </div>
-                        <div className="flex flex-col items-center justify-center p-2 border-x border-border">
-                            <MapPin className="h-5 w-5 text-primary mb-1" />
-                            <span className="text-base font-bold truncate max-w-full">
-                                {property.location}
-                            </span>
-                            <span className="text-xs text-muted-foreground">Location</span>
-                        </div>
-                        <div className="flex flex-col items-center justify-center p-2 col-span-2 sm:col-span-1">
-                            <ShieldCheck className="h-5 w-5 text-primary mb-1" />
-                            <span className="text-base font-bold">Verified</span>
-                            <span className="text-xs text-muted-foreground">Status</span>
-                        </div>
-                    </div>
+                {/* Gallery */}
+                <section aria-labelledby="gallery-heading" className="mt-6">
+                    <h2 id="gallery-heading" className="sr-only">
+                        Photo gallery
+                    </h2>
+                    <PropertyGallery images={images} title={property.title} />
+                </section>
 
-                    <div className="space-y-3 border-t border-border pt-6">
-                        <h2 className="text-xl font-semibold">About this property</h2>
-                        <p className="text-muted-foreground leading-relaxed text-sm sm:text-base whitespace-pre-line">
-                            {property.description}
-                        </p>
-                    </div>
+                <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-12">
+                    <div className="min-w-0 space-y-12">
+                        {/* Overview */}
+                        <section aria-labelledby="overview-heading" className="space-y-4">
+                            <h2 id="overview-heading" className="font-serif text-2xl font-semibold tracking-tight text-foreground">
+                                Overview
+                            </h2>
+                            {quickFacts.length > 0 && (
+                                <ul className="flex flex-wrap gap-2">
+                                    {quickFacts.map(({ icon: Icon, label }) => (
+                                        <li
+                                            key={label}
+                                            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-foreground"
+                                        >
+                                            <Icon className="h-4 w-4 text-primary" /> {label}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">
+                                {property.description}
+                            </p>
+                        </section>
 
-                    <div className="space-y-4 border-t border-border pt-6">
-                        <h2 className="text-xl font-semibold">Features & Amenities</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {DEFAULT_AMENITIES.map((amenity, idx) => (
-                                <div key={idx} className="flex items-center gap-2 text-sm">
-                                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                                    <span>{amenity}</span>
+                        {/* Specifications */}
+                        <section aria-labelledby="specs-heading" className="space-y-4">
+                            <h2 id="specs-heading" className="font-serif text-2xl font-semibold tracking-tight text-foreground">
+                                Key information
+                            </h2>
+                            <dl className="grid overflow-hidden rounded-2xl border border-border bg-card shadow-sm sm:grid-cols-2">
+                                {specs.map((spec, i) => (
+                                    <div
+                                        key={spec.label}
+                                        className={`flex items-center justify-between gap-4 border-border px-4 py-3 text-sm ${
+                                            i > 0 ? 'border-t' : ''
+                                        } ${i === 1 ? 'sm:border-t-0' : ''} ${i % 2 === 1 ? 'sm:border-l' : ''}`}
+                                    >
+                                        <dt className="shrink-0 text-muted-foreground">{spec.label}</dt>
+                                        <dd className="min-w-0 text-right font-medium text-foreground">{spec.value}</dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        </section>
+
+                        {/* Amenities (hidden when the landlord listed none) */}
+                        {amenities.length > 0 && (
+                            <section aria-labelledby="amenities-heading" className="space-y-4">
+                                <h2 id="amenities-heading" className="font-serif text-2xl font-semibold tracking-tight text-foreground">
+                                    Amenities
+                                </h2>
+                                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    {amenities.map((amenity) => (
+                                        <li key={amenity} className="flex items-center gap-3 text-sm text-foreground">
+                                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                <Check className="h-4 w-4" />
+                                            </span>
+                                            {amenity}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
+                        )}
+
+                        {/* Location */}
+                        <section aria-labelledby="location-heading" className="space-y-4">
+                            <h2 id="location-heading" className="font-serif text-2xl font-semibold tracking-tight text-foreground">
+                                Location
+                            </h2>
+                            <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-start gap-3">
+                                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                        <MapPin className="h-5 w-5" />
+                                    </span>
+                                    <div>
+                                        <p className="font-semibold text-foreground">{property.location}</p>
+                                        <p className="text-sm text-muted-foreground">{property.address || dash}</p>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
+                                <a
+                                    href={mapsUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                                >
+                                    Open in Google Maps <ExternalLink className="h-4 w-4" />
+                                </a>
+                            </div>
+                        </section>
 
-                    {/* Tenant Ratings & Reviews */}
-                    <PropertyReviews propertyId={property.id} className="border-t border-border pt-6" />
+                        {/* Reviews */}
+                        <section id="reviews" aria-labelledby="reviews-heading" className="scroll-mt-24 space-y-4">
+                            <h2 id="reviews-heading" className="font-serif text-2xl font-semibold tracking-tight text-foreground">
+                                Reviews &amp; ratings
+                            </h2>
+                            <PropertyReviews propertyId={property.id} initialReviews={property.reviews} />
+                        </section>
 
-                    <div className="flex items-center gap-6 border-t border-border pt-6 text-xs text-muted-foreground flex-wrap">
-                        <span className="flex items-center gap-1.5">
-                            <Calendar className="h-4 w-4" /> Listed: {formattedDate}
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                            <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> Verified Listing
-                        </span>
-                    </div>
-                </div>
-
-                {/* Sidebar Sticky Contact / Rental Application Card */}
-                <div className="lg:col-span-1">
-                    <Card className="sticky top-20 border-border shadow-xs space-y-6">
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-lg">Interested in this property?</CardTitle>
-                        </CardHeader>
-
-                        <CardContent className="space-y-6">
-                            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
-                                <Avatar className="h-10 w-10">
-                                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                                        {landlordInitials}
+                        {/* Landlord */}
+                        <section aria-labelledby="landlord-heading" className="space-y-4">
+                            <h2 id="landlord-heading" className="font-serif text-2xl font-semibold tracking-tight text-foreground">
+                                Your landlord
+                            </h2>
+                            <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+                                <Avatar className="h-14 w-14 shrink-0">
+                                    <AvatarFallback className="bg-primary/10 text-base font-semibold text-primary">
+                                        {initials(property.landlord.name)}
                                     </AvatarFallback>
                                 </Avatar>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-sm font-medium truncate">
-                                        {landlordName}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground truncate">
-                                        {property.landlord?.email || 'Verified Landlord'}
-                                    </span>
+                                <div className="min-w-0 space-y-1">
+                                    <p className="truncate text-base font-semibold text-foreground">{property.landlord.name}</p>
+                                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <CalendarDays className="h-3.5 w-3.5" />
+                                            Member since {formatDate(property.landlord.createdAt, { month: 'long', year: 'numeric' })}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <Building2 className="h-3.5 w-3.5" />
+                                            {property.landlord.propertyCount}{' '}
+                                            {property.landlord.propertyCount === 1 ? 'listing' : 'listings'} on RentNest
+                                        </span>
+                                    </p>
                                 </div>
                             </div>
-
-                            {/* Interactive Rental Request Modal Form */}
-                            <RentalRequestForm
-                                propertyId={property.id}
-                                propertyTitle={property.title}
-                                price={property.price}
-                                isAvailable={isAvailable}
-                                defaultStartDate={defaultStartDate}
-                                defaultEndDate={defaultEndDate}
-                            />
-
-                            <p className="text-xs text-center text-muted-foreground">
-                                No booking fees charged upfront. Verified by RentNest guarantee.
+                            <p className="text-xs text-muted-foreground">
+                                Contact details are shared once your rental request is approved. Keep payments inside RentNest
+                                so they&apos;re tracked on your dashboard.
                             </p>
-                        </CardContent>
-                    </Card>
+                        </section>
+                    </div>
+
+                    {/* Booking card (desktop) */}
+                    <aside className="hidden lg:block" aria-label="Request to rent">
+                        <div className="sticky top-24 space-y-5 rounded-2xl border border-border bg-card p-6 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <p className="text-foreground">
+                                    <span className="font-serif text-3xl font-semibold">{formatPrice(property.price)}</span>
+                                    <span className="text-sm text-muted-foreground"> / month</span>
+                                </p>
+                                <StatusBadge status={property.isAvailable ? 'AVAILABLE' : 'RENTED'} />
+                            </div>
+                            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                <Star className={hasReviews ? 'h-4 w-4 fill-highlight text-highlight' : 'h-4 w-4'} />
+                                {hasReviews ? (
+                                    <>
+                                        <span className="font-semibold text-foreground">{property.avgRating.toFixed(1)}</span>·{' '}
+                                        {property.reviewCount} {property.reviewCount === 1 ? 'review' : 'reviews'}
+                                    </>
+                                ) : (
+                                    'New listing — no reviews yet'
+                                )}
+                            </p>
+                            <div className="border-t border-border pt-5">
+                                <RentalRequestForm
+                                    propertyId={property.id}
+                                    propertyTitle={property.title}
+                                    price={property.price}
+                                    isAvailable={property.isAvailable}
+                                    defaultStartDate={moveIn}
+                                    defaultEndDate={moveOut}
+                                />
+                            </div>
+                        </div>
+                    </aside>
                 </div>
-            </div>
+            </Container>
+
+            {/* Related */}
+            <section className="mt-16 border-t border-border bg-muted/30 py-16 sm:py-20">
+                <Container>
+                    <SectionHeading
+                        eyebrow="Keep exploring"
+                        title="Similar homes"
+                        description={`Other available homes in ${property.location} or the same category.`}
+                    />
+                    <RelatedProperties propertyId={property.id} hrefQuery={datesQuery.toString() || undefined} />
+                </Container>
+            </section>
+
+            <MobileBookingBar
+                propertyId={property.id}
+                title={property.title}
+                price={property.price}
+                isAvailable={property.isAvailable}
+                avgRating={property.avgRating}
+                reviewCount={property.reviewCount}
+                defaultStartDate={moveIn}
+                defaultEndDate={moveOut}
+            />
         </div>
     );
 }

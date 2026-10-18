@@ -2,54 +2,52 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import { loadStripe, type StripeElementsOptions } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     ArrowLeft,
     Building2,
-    Calendar,
-    CreditCard,
-    Loader2,
-    ShieldAlert,
+    CalendarDays,
     CheckCircle2,
+    Loader2,
+    Lock,
+    MapPin,
     Receipt,
+    RefreshCw,
+    ShieldAlert,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
+import { CheckoutForm } from '@/components/checkout/CheckoutForm';
+import { buildStripeAppearance } from '@/components/checkout/stripe-appearance';
 import { rentalsApi, paymentsApi, ApiError } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
-import { CheckoutForm } from '@/components/checkout/CheckoutForm';
+import { formatDate, formatMoney } from '@/lib/format';
+import { canOptimizeImage, coverImage } from '@/lib/images';
+import type { RentalRequest } from '@/types/api';
 
-// Initialize Stripe outside component render
-const stripePromise = loadStripe(
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
-);
-
-interface RentalRequestDetail {
-    id: string;
-    startDate: string;
-    endDate: string;
-    status: string;
-    property?: {
-        title: string;
-        location?: string;
-        price: number;
-        images?: string[];
-        imageUrl?: string | null;
-    };
-}
+// Initialize Stripe outside component render. loadStripe('') rejects (unhandled)
+// and leaves the Pay button disabled forever, so only load with a real key.
+const STRIPE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = STRIPE_KEY ? loadStripe(STRIPE_KEY) : null;
 
 export default function TenantPaymentPage() {
     const params = useParams();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const requestId = params.id as string;
     const { token, isLoading: authLoading } = useAuth();
 
-    const [requestDetail, setRequestDetail] = useState<RentalRequestDetail | null>(null);
+    const [requestDetail, setRequestDetail] = useState<RentalRequest | null>(null);
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [alreadyPaid, setAlreadyPaid] = useState(false);
 
     // Elements must never see a changed clientSecret prop (it is immutable
     // after mount), so keep the options object identity stable and remount
@@ -57,12 +55,7 @@ export default function TenantPaymentPage() {
     const elementsOptions = useMemo<StripeElementsOptions>(
         () => ({
             clientSecret: clientSecret as string,
-            appearance: {
-                theme: 'stripe',
-                variables: {
-                    colorPrimary: '#10b981',
-                },
-            },
+            appearance: buildStripeAppearance(),
         }),
         [clientSecret]
     );
@@ -79,18 +72,19 @@ export default function TenantPaymentPage() {
         }
         setLoading(true);
         setError(null);
+        setAlreadyPaid(false);
 
         try {
             // 1. Fetch Request details for the order summary
-            const rentalResponse = await rentalsApi.getById(requestId);
-            const rental = (rentalResponse as { data?: RentalRequestDetail }).data || rentalResponse;
-
-            const reqData = rental as RentalRequestDetail;
+            const rentalResponse = await rentalsApi.detail(requestId);
+            const reqData = rentalResponse.data;
             setRequestDetail(reqData);
 
             if (reqData.status !== 'APPROVED') {
+                const paid = reqData.status === 'ACTIVE' || reqData.status === 'COMPLETED';
+                setAlreadyPaid(paid);
                 setError(
-                    reqData.status === 'ACTIVE'
+                    paid
                         ? 'This rental request is already paid and active.'
                         : 'This rental request is not approved for payment.'
                 );
@@ -104,9 +98,11 @@ export default function TenantPaymentPage() {
             const paymentRes = await paymentsApi.createPaymentIntent(requestId);
 
             if (paymentRes.data?.alreadyPaid) {
-                // Stripe already settled this rental: verify via the success page.
+                // Stripe already settled this rental (the backend just marked it
+                // ACTIVE): drop cached "Pay now" rows, then verify via the success page.
+                queryClient.invalidateQueries({ queryKey: ['tenant'] });
                 try {
-                    const history = await paymentsApi.getPayments();
+                    const history = await paymentsApi.mine();
                     const match = history.data?.find((p) => p.rentalRequestId === requestId);
                     router.push(
                         match
@@ -126,6 +122,8 @@ export default function TenantPaymentPage() {
             }
         } catch (err) {
             if (err instanceof ApiError) {
+                // e.g. 400 "This rental has already been paid"
+                if (/already been paid/i.test(err.message)) setAlreadyPaid(true);
                 setError(err.message);
             } else {
                 setError('Failed to prepare checkout. Please try again later.');
@@ -133,181 +131,233 @@ export default function TenantPaymentPage() {
         } finally {
             setLoading(false);
         }
-    }, [requestId, token, router]);
+    }, [requestId, token, router, queryClient]);
 
     useEffect(() => {
         if (authLoading) return;
         if (initializedFor.current === requestId) return;
         initializedFor.current = requestId;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         initCheckout();
     }, [initCheckout, authLoading, requestId]);
 
     if (authLoading || loading) {
         return (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-3">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Preparing secure checkout environment...</p>
+            <div className="space-y-6" aria-busy="true">
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Preparing secure checkout…
+                </div>
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                    <Skeleton className="h-80 rounded-2xl lg:col-span-7" />
+                    <Skeleton className="h-80 rounded-2xl lg:col-span-5" />
+                </div>
             </div>
         );
     }
 
     if (!token) {
         return (
-            <div className="max-w-md mx-auto my-12 text-center p-8 border border-border rounded-2xl bg-card shadow-xs space-y-4">
-                <ShieldAlert className="h-12 w-12 text-destructive mx-auto" />
-                <h2 className="text-lg font-bold text-foreground">Sign in required</h2>
-                <p className="text-xs text-muted-foreground">
-                    You need to be signed in as a tenant to access this payment.
-                </p>
-                <Button asChild size="sm" variant="outline">
-                    <Link href="/login">Sign In</Link>
-                </Button>
-            </div>
+            <StateCard
+                title="Sign in required"
+                message="You need to be signed in as a tenant to access this payment."
+                action={
+                    <Button asChild className="h-10 rounded-xl">
+                        <Link href={`/login?from=${encodeURIComponent(`/dashboard/tenant/requests/${requestId}/pay`)}`}>Sign in</Link>
+                    </Button>
+                }
+            />
+        );
+    }
+
+    if (!stripePromise && !error && requestDetail) {
+        return (
+            <StateCard
+                title="Payments unavailable"
+                message="Online payments are not configured right now. Please try again later or contact support."
+                action={
+                    <Button asChild variant="outline" className="h-10 rounded-xl">
+                        <Link href="/dashboard/tenant/requests">Back to requests</Link>
+                    </Button>
+                }
+            />
         );
     }
 
     if (error || !requestDetail) {
         return (
-            <div className="max-w-md mx-auto my-12 text-center p-8 border border-border rounded-2xl bg-card shadow-xs space-y-4">
-                <ShieldAlert className="h-12 w-12 text-destructive mx-auto" />
-                <h2 className="text-lg font-bold text-foreground">Checkout Unavailable</h2>
-                <p className="text-xs text-muted-foreground">{error || 'Rental details not found.'}</p>
-                <Button asChild size="sm" variant="outline">
-                    <Link href="/dashboard/tenant">Return to Requests</Link>
-                </Button>
-            </div>
+            <StateCard
+                title={alreadyPaid ? 'Already paid' : 'Checkout unavailable'}
+                message={error || 'Rental details not found.'}
+                positive={alreadyPaid}
+                action={
+                    <>
+                        {alreadyPaid ? (
+                            <Button asChild className="h-10 rounded-xl">
+                                <Link href="/dashboard/tenant/payments">View payments</Link>
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                className="h-10 rounded-xl"
+                                onClick={() => {
+                                    initializedFor.current = null;
+                                    initCheckout();
+                                }}
+                            >
+                                <RefreshCw className="h-4 w-4" /> Try again
+                            </Button>
+                        )}
+                        <Button asChild variant="outline" className="h-10 rounded-xl">
+                            <Link href="/dashboard/tenant/requests">Back to requests</Link>
+                        </Button>
+                    </>
+                }
+            />
         );
     }
 
     const amount = requestDetail.property?.price || 0;
+    const cover = requestDetail.property ? coverImage(requestDetail.property) : null;
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            {/* Back Button */}
-            <div>
-                <Button variant="ghost" asChild className="gap-2 text-muted-foreground px-0 hover:bg-transparent">
-                    <Link href="/dashboard/tenant">
-                        <ArrowLeft className="h-4 w-4" /> Back to Requests
-                    </Link>
-                </Button>
-            </div>
+        <div className="mx-auto max-w-5xl space-y-6">
+            <Button variant="ghost" asChild className="-ml-2 h-9 rounded-xl px-2 text-muted-foreground">
+                <Link href="/dashboard/tenant/requests">
+                    <ArrowLeft className="h-4 w-4" /> Back to requests
+                </Link>
+            </Button>
 
-            {/* Page Title */}
-            <div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                    <CreditCard className="h-7 w-7 text-emerald-600" />
-                    Complete Rental Payment
-                </h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                    Review details and enter payment information to activate your lease.
-                </p>
-            </div>
+            <DashboardPageHeader
+                title="Complete your payment"
+                description="Review the details and pay securely to activate your rental."
+            />
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-                {/* Left Column: Stripe Form */}
-                <div className="md:col-span-7 space-y-4">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                {/* Stripe form */}
+                <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6 lg:col-span-7">
+                    <div className="mb-5 flex items-center gap-2">
+                        <Lock className="h-4 w-4 text-primary" />
+                        <h2 className="text-sm font-semibold text-foreground">Payment details</h2>
+                    </div>
                     {clientSecret && (
-                        <Elements
-                            key={clientSecret}
-                            stripe={stripePromise}
-                            options={elementsOptions}
-                        >
-                            <CheckoutForm
-                                rentalRequestId={requestId}
-                                amount={amount}
-                                clientSecret={clientSecret}
-                            />
+                        <Elements key={clientSecret} stripe={stripePromise} options={elementsOptions}>
+                            <CheckoutForm rentalRequestId={requestId} amount={amount} clientSecret={clientSecret} />
                         </Elements>
                     )}
-                </div>
+                    <p className="mt-4 text-xs text-muted-foreground">
+                        Card details go directly to Stripe — RentNest never sees or stores your card number.
+                    </p>
+                </section>
 
-                {/* Right Column: Order Summary */}
-                <div className="md:col-span-5 space-y-4">
-                    <div className="rounded-2xl border border-border bg-card p-6 shadow-2xs space-y-5">
-                        <div className="flex items-center gap-2 pb-4 border-b border-border">
-                            <Receipt className="h-5 w-5 text-muted-foreground" />
-                            <h2 className="font-semibold text-foreground text-base">Payment Summary</h2>
+                {/* Order summary */}
+                <aside className="space-y-5 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6 lg:col-span-5">
+                    <div className="flex items-center gap-2 border-b border-border pb-4">
+                        <Receipt className="h-4 w-4 text-muted-foreground" />
+                        <h2 className="text-sm font-semibold text-foreground">Payment summary</h2>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
+                            {cover ? (
+                                <Image
+                                    src={cover}
+                                    alt={requestDetail.property?.title ?? 'Property'}
+                                    fill
+                                    sizes="64px"
+                                    className="object-cover"
+                                    unoptimized={!canOptimizeImage(cover)}
+                                />
+                            ) : (
+                                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                                    <Building2 className="h-6 w-6" />
+                                </div>
+                            )}
                         </div>
-
-                        {/* Property Card Info */}
-                        <div className="space-y-3">
-                            <div className="flex items-start gap-3">
-                                <div className="h-12 w-12 rounded-xl bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden">
-                                    {requestDetail.property?.imageUrl || requestDetail.property?.images?.[0] ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img
-                                            src={requestDetail.property.imageUrl || requestDetail.property.images![0]}
-                                            alt={requestDetail.property.title}
-                                            className="h-full w-full object-cover"
-                                        />
-                                    ) : (
-                                        <Building2 className="h-6 w-6 text-muted-foreground" />
-                                    )}
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-foreground text-sm leading-tight">
-                                        {requestDetail.property?.title}
-                                    </h3>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        {requestDetail.property?.location}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Lease Dates */}
-                            <div className="p-3 rounded-xl bg-muted/50 border border-border/60 text-xs space-y-1.5">
-                                <div className="flex items-center justify-between text-muted-foreground">
-                                    <span className="flex items-center gap-1.5">
-                                        <Calendar className="h-3.5 w-3.5" /> Start Date
-                                    </span>
-                                    <span className="font-medium text-foreground">
-                                        {new Date(requestDetail.startDate).toLocaleDateString()}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between text-muted-foreground">
-                                    <span className="flex items-center gap-1.5">
-                                        <Calendar className="h-3.5 w-3.5" /> End Date
-                                    </span>
-                                    <span className="font-medium text-foreground">
-                                        {new Date(requestDetail.endDate).toLocaleDateString()}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Price Breakdown */}
-                        <div className="pt-4 border-t border-border space-y-2 text-xs">
-                            <div className="flex justify-between text-muted-foreground">
-                                <span>First Month Rent</span>
-                                <span className="font-medium text-foreground">${amount.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-muted-foreground">
-                                <span>Service Fee</span>
-                                <span className="font-medium text-foreground">$0.00</span>
-                            </div>
-                            <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/60">
-                                <span>Total Due Now</span>
-                                <span className="text-emerald-600 dark:text-emerald-400">
-                                    ${amount.toFixed(2)}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Features List */}
-                        <div className="pt-2 text-[11px] text-muted-foreground space-y-1.5">
-                            <div className="flex items-center gap-1.5">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                <span>Instant lease activation upon approval</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                <span>Automated digital receipt emailed to you</span>
-                            </div>
+                        <div className="min-w-0">
+                            <h3 className="font-serif text-base font-semibold leading-tight tracking-tight text-foreground">
+                                {requestDetail.property?.title}
+                            </h3>
+                            {requestDetail.property?.location && (
+                                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                    <MapPin className="h-3 w-3" /> {requestDetail.property.location}
+                                </p>
+                            )}
                         </div>
                     </div>
-                </div>
+
+                    <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-3 text-xs">
+                        <div className="flex items-center justify-between text-muted-foreground">
+                            <span className="flex items-center gap-1.5">
+                                <CalendarDays className="h-3.5 w-3.5" /> Start date
+                            </span>
+                            <span className="font-medium text-foreground">{formatDate(requestDetail.startDate)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-muted-foreground">
+                            <span className="flex items-center gap-1.5">
+                                <CalendarDays className="h-3.5 w-3.5" /> End date
+                            </span>
+                            <span className="font-medium text-foreground">{formatDate(requestDetail.endDate)}</span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2 border-t border-border pt-4 text-sm">
+                        <div className="flex justify-between text-muted-foreground">
+                            <span>First month&apos;s rent</span>
+                            <span className="font-medium text-foreground">{formatMoney(amount)}</span>
+                        </div>
+                        <div className="flex justify-between text-muted-foreground">
+                            <span>Service fee</span>
+                            <span className="font-medium text-foreground">{formatMoney(0)}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-border pt-3 text-base font-semibold text-foreground">
+                            <span>Total due now</span>
+                            <span className="text-primary">{formatMoney(amount)}</span>
+                        </div>
+                    </div>
+
+                    <ul className="space-y-1.5 text-xs text-muted-foreground">
+                        <li className="flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                            Your rental becomes active as soon as payment is confirmed
+                        </li>
+                        <li className="flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                            The transaction ID appears under Payments for your records
+                        </li>
+                    </ul>
+                </aside>
             </div>
+        </div>
+    );
+}
+
+function StateCard({
+    title,
+    message,
+    action,
+    positive = false,
+}: {
+    title: string;
+    message: string;
+    action: React.ReactNode;
+    positive?: boolean;
+}) {
+    return (
+        <div className="mx-auto my-10 flex max-w-md flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+            <div
+                className={
+                    positive
+                        ? 'flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary'
+                        : 'flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive'
+                }
+            >
+                {positive ? <CheckCircle2 className="h-6 w-6" /> : <ShieldAlert className="h-6 w-6" />}
+            </div>
+            <div className="space-y-1.5">
+                <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">{title}</h2>
+                <p className="text-sm text-muted-foreground">{message}</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">{action}</div>
         </div>
     );
 }

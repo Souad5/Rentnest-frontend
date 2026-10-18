@@ -1,5 +1,47 @@
-const BASE_URL =
+import type {
+  AdminInsights,
+  AdminStats,
+  AdminUser,
+  ApiEnvelope,
+  AuthPayload,
+  Category,
+  ChatMessage,
+  ChatResult,
+  ContactMessage,
+  LandlordStats,
+  LocationStat,
+  ManagedProperty,
+  NewsletterSubscriber,
+  Payment,
+  PropertyDescriptionInput,
+  PropertyDescriptionResult,
+  PropertyDetail,
+  PropertyInput,
+  PropertyQuery,
+  PropertySummary,
+  PublicStats,
+  RentalRequest,
+  Review as ReviewItem,
+  SearchSuggestionsResult,
+  TenantStats,
+  User,
+  UserRole,
+} from "@/types/api";
+
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://rentnest-backend-five.vercel.app/api";
+const BASE_URL = API_BASE_URL;
+
+/** Builds a query string from defined, non-empty values. */
+export function toQueryString(params: object = {}): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") continue;
+    search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
+}
 /**
  * Structured API Error Response
  */
@@ -62,10 +104,13 @@ function extractApiMessage(data: Record<string, unknown>): string | undefined {
   return baseMessage;
 }
 
+/** Dispatched on `window` when an authenticated request is rejected with 401. */
+export const AUTH_EXPIRED_EVENT = "rentnest:auth-expired";
+
 /**
  * Universal Fetch Client with Token Injection & Error Normalization
  */
-async function fetcher<T>(
+export async function fetcher<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
@@ -89,6 +134,17 @@ async function fetcher<T>(
   });
 
   const data = await response.json().catch(() => ({}));
+
+  // An expired/invalid session mid-use: let AuthProvider end the session
+  // (credential endpoints legitimately answer 401 for wrong passwords).
+  if (
+    response.status === 401 &&
+    token &&
+    typeof window !== "undefined" &&
+    !/^\/auth\/(login|register|google)\b/.test(endpoint)
+  ) {
+    window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+  }
 
   if (!response.ok) {
     throw new ApiError(
@@ -125,6 +181,31 @@ export const authApi = {
     fetcher<{ id: string; email: string; role: string; name: string }>(
       "/auth/me",
     ),
+
+  google: (credential: string, role?: Exclude<UserRole, "ADMIN">) =>
+    fetcher<ApiEnvelope<AuthPayload>>("/auth/google", {
+      method: "POST",
+      body: JSON.stringify(role ? { credential, role } : { credential }),
+    }),
+
+  me: () => fetcher<ApiEnvelope<User>>("/auth/me"),
+
+  updateMe: (payload: {
+    name?: string;
+    phone?: string;
+    avatarUrl?: string;
+    bio?: string;
+  }) =>
+    fetcher<ApiEnvelope<User>>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  changePassword: (payload: { currentPassword?: string; newPassword: string }) =>
+    fetcher<ApiEnvelope<null>>("/auth/password", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
 };
 
 // ==========================================
@@ -143,6 +224,34 @@ export const propertiesApi = {
 
   getById: (id: string) =>
     fetcher<Record<string, unknown>>(`/properties/${id}`),
+
+  // ---- Typed endpoints (preferred) ----
+  list: (query: PropertyQuery = {}, init?: RequestInit) =>
+    fetcher<ApiEnvelope<PropertySummary[]>>(
+      `/properties${toQueryString(query)}`,
+      init,
+    ),
+
+  categories: () => fetcher<ApiEnvelope<Category[]>>("/properties/categories"),
+
+  detail: (id: string) => fetcher<ApiEnvelope<PropertyDetail>>(`/properties/${id}`),
+
+  related: (id: string, limit = 4) =>
+    fetcher<ApiEnvelope<PropertySummary[]>>(
+      `/properties/${id}/related${toQueryString({ limit })}`,
+    ),
+
+  locations: (limit = 8) =>
+    fetcher<ApiEnvelope<LocationStat[]>>(
+      `/properties/locations${toQueryString({ limit })}`,
+    ),
+
+  stats: () => fetcher<ApiEnvelope<PublicStats>>("/properties/stats"),
+
+  trending: (limit = 8) =>
+    fetcher<ApiEnvelope<PropertySummary[]>>(
+      `/properties/trending${toQueryString({ limit })}`,
+    ),
 };
 
 // ==========================================
@@ -195,6 +304,27 @@ export const landlordApi = {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),
+
+  // ---- Typed endpoints (preferred) ----
+  myProperties: () => fetcher<ApiEnvelope<ManagedProperty[]>>("/landlord/properties"),
+
+  create: (payload: PropertyInput) =>
+    fetcher<ApiEnvelope<PropertySummary>>("/properties/landlord", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  update: (id: string, payload: Partial<PropertyInput>) =>
+    fetcher<ApiEnvelope<PropertySummary>>(`/properties/landlord/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  requests: () => fetcher<ApiEnvelope<RentalRequest[]>>("/landlord/requests"),
+
+  stats: () => fetcher<ApiEnvelope<LandlordStats>>("/landlord/stats"),
+
+  payments: () => fetcher<ApiEnvelope<Payment[]>>("/landlord/payments"),
 };
 
 // ==========================================
@@ -216,6 +346,19 @@ export const rentalsApi = {
     fetcher<Array<Record<string, unknown>>>("/rentals/my-requests"),
 
   getById: (id: string) => fetcher<Record<string, unknown>>(`/rentals/${id}`),
+
+  // ---- Typed endpoints (preferred) ----
+  create: (payload: { propertyId: string; startDate: string; endDate: string }) =>
+    fetcher<ApiEnvelope<RentalRequest>>("/rentals", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  mine: () => fetcher<ApiEnvelope<RentalRequest[]>>("/rentals/my-requests"),
+
+  detail: (id: string) => fetcher<ApiEnvelope<RentalRequest>>(`/rentals/${id}`),
+
+  stats: () => fetcher<ApiEnvelope<TenantStats>>("/rentals/stats"),
 };
 
 // ==========================================
@@ -270,6 +413,10 @@ export const paymentsApi = {
     }>("/payments"),
   getPaymentById: (id: string) =>
     fetcher<Record<string, unknown>>(`/payments/${id}`),
+
+  // ---- Typed endpoints (preferred) ----
+  mine: () => fetcher<ApiEnvelope<Payment[]>>("/payments"),
+  detail: (id: string) => fetcher<ApiEnvelope<Payment>>(`/payments/${id}`),
 };
 
 // ==========================================
@@ -329,6 +476,13 @@ export const reviewsApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  latest: (limit = 6, minRating = 4) =>
+    fetcher<ApiEnvelope<ReviewItem[]>>(
+      `/reviews/latest${toQueryString({ limit, minRating })}`,
+    ),
+
+  mine: () => fetcher<ApiEnvelope<ReviewItem[]>>("/reviews/my"),
 };
 
 // Export shared interfaces for Admin features
@@ -400,6 +554,68 @@ export const adminApi = {
     fetcher<{ success: boolean; message: string; data: ApiProperty[] }>(
       "/admin/properties",
     ),
+
+  // ---- Typed endpoints (preferred) ----
+  stats: () => fetcher<ApiEnvelope<AdminStats>>("/admin/stats"),
+
+  users: () => fetcher<ApiEnvelope<AdminUser[]>>("/admin/users"),
+
+  setBan: (userId: string, isBanned: boolean) =>
+    fetcher<ApiEnvelope<AdminUser>>(`/admin/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ isBanned }),
+    }),
+
+  properties: () => fetcher<ApiEnvelope<ManagedProperty[]>>("/admin/properties"),
+
+  setPropertyAvailability: (id: string, isAvailable: boolean) =>
+    fetcher<ApiEnvelope<ManagedProperty>>(`/admin/properties/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ isAvailable }),
+    }),
+
+  deleteProperty: (id: string) =>
+    fetcher<ApiEnvelope<null>>(`/admin/properties/${id}`, { method: "DELETE" }),
+
+  rentals: () => fetcher<ApiEnvelope<RentalRequest[]>>("/admin/rentals"),
+
+  payments: () => fetcher<ApiEnvelope<Payment[]>>("/admin/payments"),
+
+  categories: () => fetcher<ApiEnvelope<Category[]>>("/admin/categories"),
+
+  createCategory: (payload: { name: string; description?: string }) =>
+    fetcher<ApiEnvelope<Category>>("/admin/categories", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateCategory: (id: string, payload: { name?: string; description?: string }) =>
+    fetcher<ApiEnvelope<Category>>(`/admin/categories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteCategory: (id: string) =>
+    fetcher<ApiEnvelope<null>>(`/admin/categories/${id}`, { method: "DELETE" }),
+
+  reviews: () => fetcher<ApiEnvelope<ReviewItem[]>>("/admin/reviews"),
+
+  deleteReview: (id: string) =>
+    fetcher<ApiEnvelope<null>>(`/admin/reviews/${id}`, { method: "DELETE" }),
+
+  messages: () => fetcher<ApiEnvelope<ContactMessage[]>>("/admin/messages"),
+
+  markMessage: (id: string, isRead: boolean) =>
+    fetcher<ApiEnvelope<ContactMessage>>(`/admin/messages/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ isRead }),
+    }),
+
+  deleteMessage: (id: string) =>
+    fetcher<ApiEnvelope<null>>(`/admin/messages/${id}`, { method: "DELETE" }),
+
+  subscribers: () =>
+    fetcher<ApiEnvelope<NewsletterSubscriber[]>>("/admin/subscribers"),
 };
 
 // ==========================================
@@ -431,6 +647,52 @@ export const rentalApi = {
   },
 };
 
-// ========================
-// ---------Payment Api----
-// =========================
+// ==========================================
+// 8. PUBLIC MISC (newsletter, contact)
+// ==========================================
+export const publicApi = {
+  subscribe: (email: string) =>
+    fetcher<ApiEnvelope<null>>("/newsletter", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  contact: (payload: {
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+  }) =>
+    fetcher<ApiEnvelope<ContactMessage>>("/contact", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
+
+// ==========================================
+// 9. AI FEATURES (Claude-powered, see backend services/ai.service.ts)
+// ==========================================
+export const aiApi = {
+  status: () => fetcher<ApiEnvelope<{ enabled: boolean }>>("/ai/status"),
+
+  searchSuggestions: (query: string, signal?: AbortSignal) =>
+    fetcher<ApiEnvelope<SearchSuggestionsResult>>("/ai/search-suggestions", {
+      method: "POST",
+      body: JSON.stringify({ query }),
+      ...(signal ? { signal } : {}),
+    }),
+
+  chat: (messages: ChatMessage[]) =>
+    fetcher<ApiEnvelope<ChatResult>>("/ai/chat", {
+      method: "POST",
+      body: JSON.stringify({ messages }),
+    }),
+
+  propertyDescription: (input: PropertyDescriptionInput) =>
+    fetcher<ApiEnvelope<PropertyDescriptionResult>>("/ai/property-description", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  adminInsights: () => fetcher<ApiEnvelope<AdminInsights>>("/ai/admin-insights"),
+};

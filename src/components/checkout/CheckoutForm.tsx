@@ -4,10 +4,11 @@ import React, { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Lock } from 'lucide-react';
 
 import { paymentsApi, ApiError } from '@/lib/api';
-import { AppButton } from '@/components/shared/AppButton';
+import { Button } from '@/components/ui/button';
+import { formatMoney } from '@/lib/format';
 
 interface CheckoutFormProps {
     rentalRequestId: string;
@@ -48,7 +49,7 @@ export function CheckoutForm({ amount, clientSecret }: CheckoutFormProps) {
                 toast.success('Payment successful', {
                     description: 'Your lease is now active.',
                 });
-                router.push('/dashboard/tenant?payment=success');
+                router.push('/dashboard/tenant/requests?payment=success');
                 return;
             }
 
@@ -76,7 +77,7 @@ export function CheckoutForm({ amount, clientSecret }: CheckoutFormProps) {
                     toast.success('Payment successful', {
                         description: 'Your lease is now active.',
                     });
-                    router.push('/dashboard/tenant?payment=success');
+                    router.push('/dashboard/tenant/requests?payment=success');
                 } catch (err) {
                     if (err instanceof ApiError && err.status === 400) {
                         // Server disagrees with the client-side status: surface honestly.
@@ -113,31 +114,33 @@ export function CheckoutForm({ amount, clientSecret }: CheckoutFormProps) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="p-4 rounded-xl border border-border bg-card shadow-2xs">
+            <div className="rounded-xl border border-border bg-card p-4">
                 <PaymentElement options={{ layout: 'tabs' }} />
             </div>
 
             {errorMessage && (
-                <p className="flex items-start gap-1.5 text-sm text-red-600 dark:text-red-400">
-                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <p
+                    role="alert"
+                    className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+                >
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>{errorMessage}</span>
                 </p>
             )}
 
-            <AppButton
-                type="submit"
-                disabled={!stripe || isProcessing}
-                className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs transition-all"
-            >
+            <Button type="submit" disabled={!stripe || isProcessing} className="h-11 w-full rounded-xl text-sm font-semibold">
                 {isProcessing ? (
                     <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Processing...
+                        Processing…
                     </>
                 ) : (
-                    `Pay $${amount.toFixed(2)}`
+                    <>
+                        <Lock className="h-4 w-4" />
+                        Pay {formatMoney(amount)}
+                    </>
                 )}
-            </AppButton>
+            </Button>
         </form>
     );
 }

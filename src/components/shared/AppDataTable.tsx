@@ -93,7 +93,7 @@ export function AppDataTable<TData>({
     globalFilter: controlledGlobalFilter,
     onGlobalFilterChange,
     showPagination = true,
-    containerClassName = 'rounded-xl border border-border bg-card overflow-hidden shadow-2xs',
+    containerClassName = 'rounded-2xl border border-border bg-card overflow-hidden shadow-sm',
     headerRowClassName = 'border-b border-border',
     rowClassName = 'hover:bg-muted/40 transition-colors',
     tableTextClassName = '',
@@ -110,11 +110,25 @@ export function AppDataTable<TData>({
         pageSize: initialPageSize,
     });
 
+    // Search, filter and sort changes start again from page 1. Data changes
+    // (optimistic row updates, deletes, refetches) keep the current page instead
+    // of TanStack's default auto-reset, which jumped back to page 1 on every edit.
+    const [prevQuery, setPrevQuery] = React.useState({ globalFilter, columnFilters, sorting });
+    if (
+        prevQuery.globalFilter !== globalFilter ||
+        prevQuery.columnFilters !== columnFilters ||
+        prevQuery.sorting !== sorting
+    ) {
+        setPrevQuery({ globalFilter, columnFilters, sorting });
+        if (pagination.pageIndex !== 0) setPagination((p) => ({ ...p, pageIndex: 0 }));
+    }
+
     // eslint-disable-next-line react-hooks/incompatible-library
     const table = useReactTable({
         data,
         columns,
         state: { globalFilter, sorting, columnFilters, pagination },
+        autoResetPageIndex: false,
         onGlobalFilterChange: setGlobalFilter,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
@@ -124,6 +138,12 @@ export function AppDataTable<TData>({
         getSortedRowModel: getSortedRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
     });
+
+    // Removing the last row(s) of the last page would leave an empty page; step back.
+    const pageCount = table.getPageCount();
+    if (pagination.pageIndex > 0 && pagination.pageIndex >= pageCount) {
+        setPagination((p) => ({ ...p, pageIndex: Math.max(0, pageCount - 1) }));
+    }
 
     const showToolbar = !hideToolbar && (!!searchPlaceholder || filters.length > 0);
 
@@ -277,7 +297,7 @@ export function AppDataTable<TData>({
                         {/* Pagination */}
                         {showPagination && (
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border px-4 py-3">
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground">
                                     <span>
                                         Page {table.getState().pagination.pageIndex + 1} of{' '}
                                         {table.getPageCount() || 1}

@@ -1,17 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import { Controller, useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { toast } from 'sonner';
 import { AlertCircle, CheckCircle2, Loader2, Send, Star } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { AppButton } from '@/components/shared/AppButton';
+import { ApiError, reviewsApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { reviewsApi, ApiError } from '@/lib/api';
 
 const MAX_COMMENT_LENGTH = 500;
-// Matches the backend Zod rule so feedback is instant instead of a failed request.
+// Matches the backend rule (comment min 5) so feedback is instant.
 const MIN_COMMENT_LENGTH = 5;
 
 const RATING_LABELS: Record<number, string> = {
@@ -22,6 +25,21 @@ const RATING_LABELS: Record<number, string> = {
     5: 'Excellent',
 };
 
+const reviewSchema = z.object({
+    rating: z
+        .number({ required_error: 'Please select a star rating', invalid_type_error: 'Please select a star rating' })
+        .int()
+        .min(1, 'Please select a star rating')
+        .max(5),
+    comment: z
+        .string()
+        .trim()
+        .min(MIN_COMMENT_LENGTH, `Write at least ${MIN_COMMENT_LENGTH} characters about your stay`)
+        .max(MAX_COMMENT_LENGTH, `Keep it under ${MAX_COMMENT_LENGTH} characters`),
+});
+
+type ReviewValues = z.infer<typeof reviewSchema>;
+
 interface ReviewFormProps {
     propertyId: string;
     /** Invoked after a successful submission so the parent can refresh the reviews list. */
@@ -30,170 +48,141 @@ interface ReviewFormProps {
 }
 
 export function ReviewForm({ propertyId, onSuccess, className }: ReviewFormProps) {
-    const [rating, setRating] = useState(0);
-    const [hoveredRating, setHoveredRating] = useState(0);
-    const [comment, setComment] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [hovered, setHovered] = useState(0);
     const [success, setSuccess] = useState(false);
 
-    const displayRating = hoveredRating || rating;
+    const {
+        control,
+        register,
+        handleSubmit,
+        reset,
+        setError,
+        formState: { errors, isSubmitting },
+    } = useForm<ReviewValues>({
+        resolver: zodResolver(reviewSchema),
+        defaultValues: { rating: 0, comment: '' },
+    });
 
-    const handleSubmit = async (event: React.FormEvent) => {
-        event.preventDefault();
-        setError(null);
+    const comment = useWatch({ control, name: 'comment' }) ?? '';
 
-        if (rating < 1) {
-            setError('Please select a star rating.');
-            return;
-        }
-
-        if (!comment.trim()) {
-            setError('Please write a short comment about your experience.');
-            return;
-        }
-
-        if (comment.trim().length < MIN_COMMENT_LENGTH) {
-            setError(
-                `Your review is too short — it must be at least ${MIN_COMMENT_LENGTH} characters long.`
-            );
-            return;
-        }
-
+    const onSubmit = async (values: ReviewValues) => {
+        setSuccess(false);
         try {
-            setSubmitting(true);
-            await reviewsApi.createReview({
-                propertyId,
-                rating,
-                comment: comment.trim(),
-            });
-
-            // Refresh the parent list first, then surface feedback and reset.
-            onSuccess?.();
+            await reviewsApi.createReview({ propertyId, rating: values.rating, comment: values.comment });
+            reset({ rating: 0, comment: '' });
             setSuccess(true);
-            setRating(0);
-            setHoveredRating(0);
-            setComment('');
-            toast.success('Review submitted successfully', {
-                description: 'Thanks for sharing your experience!',
-            });
-
-            setTimeout(() => setSuccess(false), 4000);
+            toast.success('Review submitted', { description: 'Thanks for helping other tenants decide.' });
+            onSuccess?.();
         } catch (err) {
-            const message =
-                err instanceof ApiError
-                    ? err.message
-                    : 'Failed to submit your review. Please try again.';
-            setError(message);
+            const message = err instanceof ApiError ? err.message : 'We couldn’t submit your review. Please try again.';
+            setError('root', { type: 'server', message });
             toast.error(message);
-        } finally {
-            setSubmitting(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className={cn('space-y-4', className)}>
-            {error && (
-                <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span>{error}</span>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className={cn('space-y-4', className)}>
+            {errors.root?.message && (
+                <div role="alert" className="flex items-start gap-2 rounded-xl bg-destructive/10 p-3 text-xs text-destructive">
+                    <AlertCircle className="mt-px h-4 w-4 shrink-0" />
+                    <span>{errors.root.message}</span>
                 </div>
             )}
 
             {success && (
-                <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+                <div role="status" className="flex items-center gap-2 rounded-xl bg-primary/10 p-3 text-xs font-medium text-primary">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    <span>Review submitted successfully. Thank you for your feedback!</span>
+                    <span>Review submitted. Thank you for sharing your experience!</span>
                 </div>
             )}
 
-            <div className="space-y-1.5">
-                <Label className="text-xs">Your rating</Label>
-                <div className="flex items-center gap-1.5">
-                    <div
-                        className="flex items-center gap-0.5"
-                        role="radiogroup"
-                        aria-label="Star rating"
-                        onMouseLeave={() => setHoveredRating(0)}
-                    >
-                        {[1, 2, 3, 4, 5].map((value) => (
-                            <button
-                                key={value}
-                                type="button"
-                                role="radio"
-                                aria-checked={rating === value}
-                                aria-label={`${value} star${value > 1 ? 's' : ''}`}
-                                disabled={submitting}
-                                onClick={() => setRating(value)}
-                                onMouseEnter={() => setHoveredRating(value)}
-                                className="rounded-md p-0.5 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-primary disabled:pointer-events-none"
-                            >
-                                <Star
-                                    className={cn(
-                                        'h-7 w-7 transition-colors',
-                                        value <= displayRating
-                                            ? 'fill-amber-400 text-amber-400'
-                                            : 'text-muted-foreground/40'
-                                    )}
-                                />
-                            </button>
-                        ))}
-                    </div>
-                    {displayRating > 0 && (
-                        <span className="ml-1 text-xs font-medium text-muted-foreground">
-                            {RATING_LABELS[displayRating]}
-                        </span>
-                    )}
-                </div>
-            </div>
+            <Controller
+                control={control}
+                name="rating"
+                render={({ field }) => {
+                    const display = hovered || field.value;
+                    return (
+                        <div className="space-y-1.5">
+                            <Label id={`rating-label-${propertyId}`} className="text-xs">
+                                Your rating
+                            </Label>
+                            <div className="flex items-center gap-1.5">
+                                <div
+                                    role="radiogroup"
+                                    aria-labelledby={`rating-label-${propertyId}`}
+                                    aria-invalid={Boolean(errors.rating) || undefined}
+                                    className="flex items-center gap-0.5"
+                                    onMouseLeave={() => setHovered(0)}
+                                >
+                                    {[1, 2, 3, 4, 5].map((value) => (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={field.value === value}
+                                            aria-label={`${value} star${value > 1 ? 's' : ''} — ${RATING_LABELS[value]}`}
+                                            disabled={isSubmitting}
+                                            onClick={() => field.onChange(value)}
+                                            onMouseEnter={() => setHovered(value)}
+                                            className="rounded-md p-0.5 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
+                                        >
+                                            <Star
+                                                className={cn(
+                                                    'h-7 w-7 transition-colors',
+                                                    value <= display ? 'fill-highlight text-highlight' : 'text-muted-foreground/40',
+                                                )}
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                                {display > 0 && (
+                                    <span className="ml-1 text-xs font-medium text-muted-foreground">{RATING_LABELS[display]}</span>
+                                )}
+                            </div>
+                            {errors.rating?.message && <p className="text-xs text-destructive">{errors.rating.message}</p>}
+                        </div>
+                    );
+                }}
+            />
 
             <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="review-comment" className="text-xs">
+                    <Label htmlFor={`review-comment-${propertyId}`} className="text-xs">
                         Your review
                     </Label>
                     <span
                         className={cn(
                             'text-[11px] tabular-nums',
-                            comment.length >= MAX_COMMENT_LENGTH
-                                ? 'text-destructive'
-                                : comment.trim().length > 0 &&
-                                    comment.trim().length < MIN_COMMENT_LENGTH
-                                    ? 'text-amber-600'
-                                    : 'text-muted-foreground'
+                            comment.length >= MAX_COMMENT_LENGTH ? 'text-destructive' : 'text-muted-foreground',
                         )}
                     >
                         {comment.length}/{MAX_COMMENT_LENGTH}
-                        {comment.trim().length > 0 &&
-                            comment.trim().length < MIN_COMMENT_LENGTH &&
-                            ` · min ${MIN_COMMENT_LENGTH} characters`}
                     </span>
                 </div>
                 <Textarea
-                    id="review-comment"
-                    value={comment}
+                    id={`review-comment-${propertyId}`}
                     maxLength={MAX_COMMENT_LENGTH}
-                    onChange={(event) => setComment(event.target.value)}
-                    placeholder="Share details about your stay — location, condition, landlord responsiveness..."
+                    placeholder="How was the location, the condition of the home and the landlord’s responsiveness?"
                     rows={4}
-                    disabled={submitting}
-                    className="resize-none text-sm"
+                    disabled={isSubmitting}
+                    aria-invalid={Boolean(errors.comment) || undefined}
+                    className="resize-none rounded-xl text-sm"
+                    {...register('comment')}
                 />
+                {errors.comment?.message && <p className="text-xs text-destructive">{errors.comment.message}</p>}
             </div>
 
-            <AppButton type="submit" disabled={submitting} className="w-full gap-2">
-                {submitting ? (
+            <Button type="submit" disabled={isSubmitting} className="h-10 w-full rounded-xl">
+                {isSubmitting ? (
                     <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Submitting Review...</span>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Submitting review…
                     </>
                 ) : (
                     <>
-                        <Send className="h-4 w-4" />
-                        <span>Submit Review</span>
+                        <Send className="h-4 w-4" /> Submit review
                     </>
                 )}
-            </AppButton>
+            </Button>
         </form>
     );
 }

@@ -1,22 +1,14 @@
-// src/app/(public)/layout.tsx
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
+import { ChatAssistant } from '@/components/ai/ChatAssistant';
 
-export default function PublicLayout({
-    children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function PublicLayout({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
         <>
-            {/* Main Navigation */}
             <Navbar />
-
-            {/* Page Content */}
-            <main className="flex-1 bg-[#f4f3f0]">{children}</main>
-
-            {/* Footer */}
-            <div className="bg-[#f4f3f0]">
-                <Footer />
-            </div>
+            <main className="flex-1 bg-background">{children}</main>
+            <Footer />
+            <ChatAssistant />
         </>
     );
 }

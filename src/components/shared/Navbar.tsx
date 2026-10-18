@@ -3,196 +3,192 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Building2, Menu, X, LayoutDashboard, LogOut } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ChevronDown, LayoutDashboard, LifeBuoy, LogOut, Menu, ScrollText, ShieldCheck, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/providers/AuthProvider';
-import { AppDropdown } from './AppDropdown';
-import { AppButton } from './AppButton';
+import { dashboardHomeFor, siteConfig } from '@/config/site';
+import { cn } from '@/lib/utils';
+import { Container } from './Container';
+import { Logo } from './Logo';
+import { ThemeToggle } from './ThemeToggle';
+import { UserMenu } from './UserMenu';
 
-interface NavbarProps {
-    user?: ReturnType<typeof useAuth>['user'];
-    onLogout?: () => void;
-}
+const resourceLinks = [
+    { label: 'Help center', href: '/help', icon: LifeBuoy, description: 'FAQs and support' },
+    { label: 'Privacy policy', href: '/privacy', icon: ShieldCheck, description: 'How we protect your data' },
+    { label: 'Terms of service', href: '/terms', icon: ScrollText, description: 'Rules for using RentNest' },
+];
 
-export default function Navbar({ user: propUser, onLogout: propOnLogout }: NavbarProps) {
+const roleShortcut = {
+    TENANT: { label: 'My Requests', href: '/dashboard/tenant/requests' },
+    LANDLORD: { label: 'My Listings', href: '/dashboard/landlord/properties' },
+    ADMIN: { label: 'Admin', href: '/dashboard/admin/users' },
+} as const;
+
+export default function Navbar() {
     const pathname = usePathname();
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const { user, logout } = useAuth();
+    const [mobileOpen, setMobileOpen] = useState(false);
 
-    // Fallback to AuthProvider state if props are not explicitly passed
-    const authContext = useAuth();
-    const user = propUser !== undefined ? propUser : authContext.user;
-    const handleLogout = propOnLogout || authContext.logout;
-
-    const navLinks = [
-        { name: 'Home', href: '/', icon: Home },
-        { name: 'Rentals & Properties', href: '/properties', icon: Building2 },
+    // 5 public routes; signed-in users also get Dashboard + a role shortcut (7).
+    const links = [
+        ...siteConfig.mainNav,
+        ...(user
+            ? [{ label: 'Dashboard', href: dashboardHomeFor(user.role) }, roleShortcut[user.role]]
+            : []),
     ];
 
-    const closeMobileMenu = () => setMobileMenuOpen(false);
+    const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`));
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-neutral-200/80 bg-[#f4f3f0] backdrop-blur-md">
-            <div className="container flex h-16 items-center justify-between px-4 sm:px-6 max-w-7xl mx-auto">
-                {/* Brand Logo */}
-                <Link href="/" className="flex items-center gap-2 text-xl font-bold" onClick={closeMobileMenu}>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#181818] text-white shadow-sm">
-                        <Building2 className="h-5 w-5" />
-                    </div>
-                    <span className="font-serif tracking-tight text-[#1c1d1d]">
-                        Rent<span className="font-sans font-extrabold text-neutral-600">Nest</span>
-                    </span>
-                </Link>
+        <header className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
+            <Container className="flex h-16 items-center justify-between gap-4">
+                <Logo />
 
-                {/* Desktop Navigation */}
-                <nav className="hidden md:flex items-center gap-6">
-                    {navLinks.map((link) => {
-                        const Icon = link.icon;
-                        const isActive = pathname === link.href;
-                        return (
-                            <Link
-                                key={link.href}
-                                href={link.href}
-                                className={`flex items-center gap-1.5 text-xs uppercase tracking-wider font-semibold transition-colors ${isActive ? 'text-[#1c1d1d]' : 'text-neutral-500 hover:text-neutral-900'
-                                    }`}
+                <nav className="hidden items-center gap-1 lg:flex" aria-label="Main">
+                    {links.map((link) => (
+                        <Link
+                            key={link.href}
+                            href={link.href}
+                            className={cn(
+                                'rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+                                isActive(link.href) ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                            )}
+                        >
+                            {link.label}
+                        </Link>
+                    ))}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                type="button"
+                                className="flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                                <Icon className="h-4 w-4" />
-                                {link.name}
-                            </Link>
-                        );
-                    })}
+                                Resources <ChevronDown className="h-3.5 w-3.5" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-64 p-1.5">
+                            {resourceLinks.map(({ label, href, icon: Icon, description }) => (
+                                <DropdownMenuItem key={href} asChild className="cursor-pointer items-start gap-3 rounded-lg p-2.5">
+                                    <Link href={href}>
+                                        <Icon className="mt-0.5 h-4 w-4 text-primary" />
+                                        <span>
+                                            <span className="block text-sm font-medium text-foreground">{label}</span>
+                                            <span className="block text-xs text-muted-foreground">{description}</span>
+                                        </span>
+                                    </Link>
+                                </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg p-2.5">
+                                <Link href="/properties?sort=popular">
+                                    <Sparkles className="h-4 w-4 text-highlight" />
+                                    <span className="text-sm font-medium">Trending homes</span>
+                                </Link>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </nav>
 
-                {/* Desktop User Menu / Auth Buttons using AppButton */}
-                <div className="hidden md:flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                    <ThemeToggle />
                     {user ? (
-                        <AppDropdown
-                            label={user.email}
-                            trigger={
-                                <AppButton
-                                    variant="ghost"
-                                    className="relative flex items-center gap-2 rounded-full p-1 pr-3 bg-neutral-100 hover:bg-neutral-200 transition-colors"
-                                >
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage
-                                            src={(user as { avatarUrl?: string }).avatarUrl}
-                                            alt={user.name}
-                                        />
-                                        <AvatarFallback className="bg-[#181818] text-white font-bold text-xs">
-                                            {user.name ? user.name.slice(0, 2).toUpperCase() : 'RN'}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-xs font-semibold text-neutral-800">
-                                        {user.name}
-                                    </span>
-                                </AppButton>
-                            }
-                            items={[
-                                {
-                                    label: 'Dashboard',
-                                    href: `/dashboard/${user.role?.toLowerCase() ?? 'tenant'}`,
-                                    icon: <LayoutDashboard className="h-4 w-4" />,
-                                },
-                                {
-                                    separator: true,
-                                },
-                                {
-                                    label: 'Log out',
-                                    onClick: handleLogout,
-                                    icon: <LogOut className="h-4 w-4" />,
-                                    destructive: true,
-                                },
-                            ]}
-                        />
+                        <UserMenu />
                     ) : (
-                        <div className="flex items-center gap-2">
-                            <AppButton asChild variant="ghost" size="sm" className="text-xs font-semibold">
+                        <div className="hidden items-center gap-2 sm:flex">
+                            <Button asChild variant="ghost" size="sm" className="rounded-xl">
                                 <Link href="/login">Log in</Link>
-                            </AppButton>
-
-                            <AppButton asChild size="sm" className="bg-[#1c1d1d] hover:bg-black text-white rounded-full text-xs font-semibold px-4">
-                                <Link href="/register">List Property / Register</Link>
-                            </AppButton>
+                            </Button>
+                            <Button asChild size="sm" className="rounded-xl">
+                                <Link href="/register">Get started</Link>
+                            </Button>
                         </div>
                     )}
-                </div>
 
-                {/* Mobile Menu Toggle Button using AppButton */}
-                <AppButton
-                    variant="ghost"
-                    size="icon"
-                    className="md:hidden p-0 w-9 h-9 flex items-center justify-center rounded-full border border-neutral-200"
-                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    aria-label="Toggle Navigation Menu"
-                >
-                    {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                </AppButton>
-            </div>
-
-            {/* Mobile Navigation Drawer */}
-            {mobileMenuOpen && (
-                <div className="md:hidden border-t border-neutral-200 bg-white px-4 pb-6 pt-4 space-y-4 animate-in slide-in-from-top-2">
-                    <nav className="flex flex-col gap-2">
-                        {navLinks.map((link) => {
-                            const Icon = link.icon;
-                            const isActive = pathname === link.href;
-                            return (
-                                <Link
-                                    key={link.href}
-                                    href={link.href}
-                                    onClick={closeMobileMenu}
-                                    className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider p-2.5 rounded-xl transition-colors ${isActive ? 'bg-neutral-100 text-[#1c1d1d]' : 'text-neutral-500 hover:bg-neutral-50'
-                                        }`}
-                                >
-                                    <Icon className="h-4 w-4" />
-                                    {link.name}
-                                </Link>
-                            );
-                        })}
-                    </nav>
-
-                    <div className="pt-4 border-t border-neutral-200">
-                        {user ? (
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-3 px-2">
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarImage src={(user as { avatarUrl?: string }).avatarUrl} alt={user.name} />
-                                        <AvatarFallback className="bg-[#181818] text-white font-bold text-xs">
-                                            {user.name ? user.name.slice(0, 2).toUpperCase() : 'RN'}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-semibold text-neutral-900">{user.name}</span>
-                                        <span className="text-[11px] text-neutral-500">{user.email}</span>
+                    <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                        <SheetTrigger asChild>
+                            <Button variant="outline" size="icon" className="rounded-xl lg:hidden" aria-label="Open navigation menu">
+                                <Menu className="h-5 w-5" />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="right" className="w-[85vw] max-w-sm overflow-y-auto">
+                            <SheetHeader className="border-b border-border">
+                                <SheetTitle asChild>
+                                    <div>
+                                        <Logo onClick={() => setMobileOpen(false)} />
                                     </div>
-                                </div>
-
-                                <AppButton asChild variant="outline" className="w-full justify-start gap-2 rounded-xl text-xs font-semibold" onClick={closeMobileMenu}>
-                                    <Link href={`/dashboard/${user.role?.toLowerCase() ?? 'tenant'}`}>
-                                        <LayoutDashboard className="h-4 w-4" /> Dashboard
+                                </SheetTitle>
+                            </SheetHeader>
+                            <nav className="flex flex-col gap-1 px-4" aria-label="Mobile">
+                                {links.map((link) => (
+                                    <Link
+                                        key={link.href}
+                                        href={link.href}
+                                        onClick={() => setMobileOpen(false)}
+                                        className={cn(
+                                            'rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                                            isActive(link.href) ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-muted',
+                                        )}
+                                    >
+                                        {link.label}
                                     </Link>
-                                </AppButton>
-
-                                <AppButton
-                                    variant="destructive"
-                                    className="w-full justify-start gap-2 rounded-xl text-xs font-semibold"
-                                    onClick={() => { closeMobileMenu(); handleLogout(); }}
-                                >
-                                    <LogOut className="h-4 w-4" /> Log out
-                                </AppButton>
+                                ))}
+                                <p className="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Resources</p>
+                                {resourceLinks.map(({ label, href, icon: Icon }) => (
+                                    <Link
+                                        key={href}
+                                        href={href}
+                                        onClick={() => setMobileOpen(false)}
+                                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-foreground hover:bg-muted"
+                                    >
+                                        <Icon className="h-4 w-4 text-primary" /> {label}
+                                    </Link>
+                                ))}
+                            </nav>
+                            <div className="mt-auto flex flex-col gap-2 border-t border-border p-4">
+                                {user ? (
+                                    <>
+                                        <Button asChild variant="outline" className="justify-start gap-2 rounded-xl" onClick={() => setMobileOpen(false)}>
+                                            <Link href={dashboardHomeFor(user.role)}>
+                                                <LayoutDashboard className="h-4 w-4" /> Dashboard
+                                            </Link>
+                                        </Button>
+                                        <Button
+                                            variant="destructive"
+                                            className="justify-start gap-2 rounded-xl"
+                                            onClick={() => {
+                                                setMobileOpen(false);
+                                                logout();
+                                            }}
+                                        >
+                                            <LogOut className="h-4 w-4" /> Log out
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Button asChild variant="outline" className="rounded-xl" onClick={() => setMobileOpen(false)}>
+                                            <Link href="/login">Log in</Link>
+                                        </Button>
+                                        <Button asChild className="rounded-xl" onClick={() => setMobileOpen(false)}>
+                                            <Link href="/register">Get started</Link>
+                                        </Button>
+                                    </>
+                                )}
                             </div>
-                        ) : (
-                            <div className="flex flex-col gap-2">
-                                <AppButton asChild variant="outline" className="w-full rounded-full text-xs font-semibold" onClick={closeMobileMenu}>
-                                    <Link href="/login">Log in</Link>
-                                </AppButton>
-                                <AppButton asChild className="w-full bg-[#1c1d1d] hover:bg-black text-white rounded-full text-xs font-semibold" onClick={closeMobileMenu}>
-                                    <Link href="/register">List Property / Register</Link>
-                                </AppButton>
-                            </div>
-                        )}
-                    </div>
+                        </SheetContent>
+                    </Sheet>
                 </div>
-            )}
+            </Container>
         </header>
     );
 }
+
+export { Navbar };

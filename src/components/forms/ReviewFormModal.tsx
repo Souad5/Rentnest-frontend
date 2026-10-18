@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Star } from 'lucide-react';
 
 import {
@@ -47,21 +47,28 @@ export function ReviewFormModal({
     // Snapshot the target while open so content (and the dialog's exit
     // animation) survives the parent clearing its state on close.
     const [target, setTarget] = useState<ReviewTarget | null>(null);
+    if (open && propertyId && (target?.propertyId !== propertyId || target?.propertyTitle !== propertyTitle)) {
+        setTarget({ propertyId, propertyTitle });
+    }
 
+    // Pending auto-close from a previous submission must not close a dialog
+    // reopened (possibly for another property) within the delay.
+    const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
-        if (open && propertyId) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setTarget({ propertyId, propertyTitle });
-        }
-    }, [open, propertyId, propertyTitle]);
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+        closeTimer.current = null;
+    }, [open, target?.propertyId]);
+    useEffect(() => () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+    }, []);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="rounded-2xl p-5 sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                        Rate Your Stay
+                    <DialogTitle className="flex items-center gap-2 font-serif text-lg tracking-tight">
+                        <Star className="h-4 w-4 fill-highlight text-highlight" />
+                        Rate your stay
                     </DialogTitle>
                     <DialogDescription>
                         Share your experience at{' '}
@@ -78,7 +85,8 @@ export function ReviewFormModal({
                         propertyId={target.propertyId}
                         onSuccess={() => {
                             onSuccess?.();
-                            setTimeout(() => onOpenChange(false), closeDelayMs);
+                            if (closeTimer.current) clearTimeout(closeTimer.current);
+                            closeTimer.current = setTimeout(() => onOpenChange(false), closeDelayMs);
                         }}
                     />
                 )}

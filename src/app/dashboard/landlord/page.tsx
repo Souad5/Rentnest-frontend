@@ -1,253 +1,152 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { AppButton } from '@/components/shared/AppButton';
+import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Building2, CheckCircle2, Clock, Home, Inbox, PlusCircle, Star, UserRound, Wallet } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
+import { StatCard } from '@/components/dashboard/StatCard';
+import { ChartCard } from '@/components/dashboard/ChartCard';
+import { CHART_COLORS, chartAxisProps, chartGridProps, chartTooltipProps } from '@/components/dashboard/chart-theme';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import RoleGuard from '@/components/guard/RoleGuard';
+    MoneyAreaChart,
+    QueryErrorState,
+    QuickActions,
+    RecentRequestsCard,
+    StatusDonutChart,
+    hasMonthData,
+    hasStatusData,
+} from '@/components/dashboard/landlord/shared';
+import { landlordApi } from '@/lib/api';
+import { formatPrice } from '@/lib/format';
 import { useAuth } from '@/providers/AuthProvider';
-import { landlordApi, propertiesApi, ApiProperty, ApiError } from '@/lib/api';
-import { DashboardHeader } from './components/DashboardHeader';
-import { MetricsOverview } from './components/MetricsOverview';
-import { PropertiesTable } from './components/PropertiesTable';
 
-interface RequestStats {
-    pendingRequests: number;
-    earnings: number;
+function truncate(text: string, max = 22) {
+    return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
-function LandlordDashboardContent() {
-    const { user, isLoading: authLoading } = useAuth();
-    const [properties, setProperties] = useState<ApiProperty[]>([]);
-    const [stats, setStats] = useState<RequestStats>({ pendingRequests: 0, earnings: 0 });
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [togglingId, setTogglingId] = useState<string | null>(null);
-    const [deleteTarget, setDeleteTarget] = useState<ApiProperty | null>(null);
+export default function LandlordOverviewPage() {
+    const { user } = useAuth();
+    const statsQuery = useQuery({ queryKey: ['landlord', 'stats'], queryFn: () => landlordApi.stats().then((r) => r.data) });
+    const requestsQuery = useQuery({ queryKey: ['landlord', 'requests'], queryFn: () => landlordApi.requests().then((r) => r.data) });
 
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
-    const fetchData = useCallback(async () => {
-        if (!user?.id) return;
-        setIsLoading(true);
-        setError(null);
+    const stats = statsQuery.data;
+    const loading = statsQuery.isPending;
+    const firstName = user?.name?.split(' ')[0] ?? 'there';
+    const topProperties = (stats?.topProperties ?? []).map((p) => ({ ...p, short: truncate(p.title) }));
 
-        try {
-            // Portfolio: dedicated authenticated endpoint returns ALL own
-            // listings including rented-out ones. Falls back to the public
-            // listing (isAvailable=true only) against older backend deploys.
-            let portfolio: ApiProperty[];
-            try {
-                const mine = await landlordApi.getMyProperties();
-                portfolio = mine.data ?? [];
-            } catch (err) {
-                if (err instanceof ApiError && err.status === 404) {
-                    const response = await propertiesApi.getAll();
-                    const resData = response as unknown as
-                        | { data?: ApiProperty[] }
-                        | ApiProperty[];
-                    const all = Array.isArray(resData) ? resData : resData.data || [];
-                    portfolio = all.filter(
-                        (p) => p.landlordId === user.id || p.landlord?.id === user.id
-                    );
-                } else {
-                    throw err;
+    return (
+        <div className="space-y-6">
+            <DashboardPageHeader
+                title={`Welcome back, ${firstName}`}
+                description="How your listings, requests and earnings are doing."
+                action={
+                    <Button asChild className="h-10 rounded-xl px-4">
+                        <Link href="/dashboard/landlord/properties/new">
+                            <PlusCircle className="h-4 w-4" /> Add property
+                        </Link>
+                    </Button>
                 }
-            }
+            />
 
-            // Request-derived metrics straight from the backend payload.
-            let nextStats: RequestStats = { pendingRequests: 0, earnings: 0 };
-            try {
-                const requestsRes = await landlordApi.getRequests();
-                const rows = requestsRes.data ?? [];
-                nextStats = {
-                    pendingRequests: rows.filter((r) => r.status === 'PENDING').length,
-                    earnings: rows.reduce((sum, r) => {
-                        const payment = r.payment as
-                            | { status?: string; amount?: number }
-                            | null
-                            | undefined;
-                        return payment?.status === 'COMPLETED'
-                            ? sum + (Number(payment.amount) || 0)
-                            : sum;
-                    }, 0),
-                };
-            } catch {
-                // Metrics are secondary to the portfolio view; keep zeros.
-            }
-
-            setProperties(portfolio);
-            setStats(nextStats);
-        } catch (err: unknown) {
-            console.error('Error loading dashboard data:', err);
-            const message =
-                err instanceof Error ? err.message : 'Could not load properties from server.';
-            setError(message);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [user?.id]);
-
-    useEffect(() => {
-        if (user) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            fetchData();
-        } else if (!authLoading) {
-            setIsLoading(false);
-        }
-    }, [user, authLoading, fetchData]);
-
-    const handleDeleteRequest = (id: string) => {
-        const target = properties.find((p) => p.id === id);
-        if (target) setDeleteTarget(target);
-    };
-
-    const handleConfirmDelete = async () => {
-        if (!deleteTarget || deletingId) return;
-        const id = deleteTarget.id;
-        setDeletingId(id);
-        try {
-            await landlordApi.deleteProperty(id);
-            setProperties((prev) => prev.filter((p) => p.id !== id));
-            toast.success('Property deleted');
-            setDeleteTarget(null);
-        } catch (err) {
-            const message =
-                err instanceof ApiError ? err.message : 'Failed to delete property.';
-            toast.error(message);
-        } finally {
-            setDeletingId(null);
-        }
-    };
-
-    const handleToggleAvailability = async (id: string, currentStatus?: boolean) => {
-        const isCurrentlyAvailable = currentStatus ?? true;
-        if (togglingId) return;
-        setTogglingId(id);
-        try {
-            await landlordApi.updateProperty(id, { isAvailable: !isCurrentlyAvailable });
-            setProperties((prev) =>
-                prev.map((p) =>
-                    p.id === id ? { ...p, isAvailable: !isCurrentlyAvailable } : p
-                )
-            );
-            toast.success(
-                !isCurrentlyAvailable ? 'Listing marked as available' : 'Listing marked as occupied'
-            );
-        } catch (err) {
-            const message =
-                err instanceof ApiError
-                    ? err.message
-                    : 'Failed to update availability. Please try again.';
-            toast.error(message);
-        } finally {
-            setTogglingId(null);
-        }
-    };
-
-    if (authLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-100">
-                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-            </div>
-        );
-    }
-
-    return (
-        <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans">
-            <div className=" space-y-6">
-                <DashboardHeader
-                    userName={user?.name}
-                    isLoading={isLoading}
-                    onRefresh={fetchData}
+            {statsQuery.isError ? (
+                <QueryErrorState
+                    title="Could not load your stats"
+                    error={statsQuery.error}
+                    onRetry={() => statsQuery.refetch()}
+                    retrying={statsQuery.isFetching}
                 />
-
-                {error && (
-                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 text-rose-700 text-xs flex items-center justify-between">
-                        <span>{error}</span>
-                        <AppButton variant="outline" size="sm" onClick={fetchData} className="h-8 text-xs bg-white border-rose-200">
-                            Retry
-                        </AppButton>
+            ) : (
+                <>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <StatCard label="Listings" value={stats?.totalProperties ?? 0} icon={Building2} loading={loading} />
+                        <StatCard label="Available now" value={stats?.availableProperties ?? 0} icon={CheckCircle2} tone="muted" loading={loading} hint="Visible to tenants" />
+                        <StatCard label="Pending requests" value={stats?.pendingRequests ?? 0} icon={Clock} tone="highlight" loading={loading} hint={stats?.pendingRequests ? 'Waiting for your decision' : 'All caught up'} />
+                        <StatCard label="Active rentals" value={stats?.activeRentals ?? 0} icon={Home} loading={loading} />
+                        <StatCard label="Total earnings" value={formatPrice(stats?.totalEarnings ?? 0)} icon={Wallet} tone="ink" loading={loading} hint="Completed payments" />
+                        <StatCard
+                            label="Average rating"
+                            value={stats?.totalReviews ? stats.averageRating.toFixed(1) : '—'}
+                            icon={Star}
+                            tone="highlight"
+                            loading={loading}
+                            hint={stats ? `${stats.totalReviews} review${stats.totalReviews === 1 ? '' : 's'}` : undefined}
+                        />
                     </div>
-                )}
 
-                <MetricsOverview
-                    properties={properties}
-                    pendingRequests={stats.pendingRequests}
-                    earnings={stats.earnings}
-                />
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+                        <ChartCard
+                            title="Monthly earnings"
+                            description="Completed payments over the last 6 months"
+                            loading={loading}
+                            empty={!hasMonthData(stats?.monthlyEarnings, 'earnings')}
+                            emptyMessage="No earnings in the last 6 months yet."
+                            className="lg:col-span-3"
+                        >
+                            <MoneyAreaChart data={stats?.monthlyEarnings ?? []} dataKey="earnings" name="Earnings" />
+                        </ChartCard>
+                        <ChartCard
+                            title="Requests by status"
+                            description="All requests across your listings"
+                            loading={loading}
+                            empty={!hasStatusData(stats?.requestsByStatus)}
+                            emptyMessage="No rental requests yet."
+                            className="lg:col-span-2"
+                        >
+                            <StatusDonutChart data={stats?.requestsByStatus ?? []} />
+                        </ChartCard>
+                    </div>
 
-                <PropertiesTable
-                    properties={properties}
-                    isLoading={isLoading}
-                    userId={user?.id}
-                    deletingId={deletingId}
-                    togglingId={togglingId}
-                    onDelete={handleDeleteRequest}
-                    onToggleAvailability={handleToggleAvailability}
+                    <ChartCard
+                        title="Top properties"
+                        description="Your most requested listings"
+                        loading={loading}
+                        empty={!topProperties.some((p) => p.requests > 0)}
+                        emptyMessage="Once tenants send requests, your most popular listings show here."
+                    >
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={topProperties} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
+                                <CartesianGrid {...chartGridProps} vertical horizontal={false} />
+                                <XAxis type="number" allowDecimals={false} {...chartAxisProps} />
+                                <YAxis type="category" dataKey="short" width={150} {...chartAxisProps} />
+                                <Tooltip
+                                    {...chartTooltipProps}
+                                    labelFormatter={(_, payload) => payload?.[0]?.payload?.title ?? ''}
+                                    formatter={(value, _name, item) => [
+                                        `${value} requests · ${formatPrice(Number(item?.payload?.earnings ?? 0))} earned`,
+                                        '',
+                                    ]}
+                                />
+                                <Bar dataKey="requests" name="Requests" fill={CHART_COLORS[0]} radius={[0, 4, 4, 0]} maxBarSize={22} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </ChartCard>
+                </>
+            )}
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="min-w-0 lg:col-span-2">
+                    <RecentRequestsCard
+                        title="Recent requests"
+                        perspective="landlord"
+                        viewAllHref="/dashboard/landlord/requests"
+                        requests={requestsQuery.data}
+                        loading={requestsQuery.isPending}
+                        error={requestsQuery.isError ? requestsQuery.error : null}
+                        onRetry={() => requestsQuery.refetch()}
+                    />
+                </div>
+                <QuickActions
+                    actions={[
+                        { label: 'Add a property', description: 'Publish a new listing', href: '/dashboard/landlord/properties/new', icon: PlusCircle },
+                        { label: 'Review requests', description: 'Approve or reject tenants', href: '/dashboard/landlord/requests', icon: Inbox },
+                        { label: 'Earnings', description: 'Payments from your tenants', href: '/dashboard/landlord/earnings', icon: Wallet },
+                        { label: 'Edit profile', description: 'Phone, photo and bio', href: '/dashboard/profile', icon: UserRound },
+                    ]}
                 />
             </div>
-
-            <Dialog
-                open={deleteTarget !== null}
-                onOpenChange={(open) => {
-                    if (!open && !deletingId) setDeleteTarget(null);
-                }}
-            >
-                <DialogContent showCloseButton={false}>
-                    <DialogHeader>
-                        <DialogTitle>Delete listing?</DialogTitle>
-                        <DialogDescription>
-                            {deleteTarget
-                                ? `"${deleteTarget.title}" will be permanently removed. This action cannot be undone.`
-                                : 'This action cannot be undone.'}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <AppButton
-                            variant="outline"
-                            disabled={deletingId === deleteTarget?.id}
-                            onClick={() => setDeleteTarget(null)}
-                        >
-                            Cancel
-                        </AppButton>
-                        <AppButton
-                            variant="destructive"
-                            className="bg-rose-600 text-white hover:bg-rose-700"
-                            disabled={deletingId === deleteTarget?.id}
-                            onClick={handleConfirmDelete}
-                        >
-                            {deletingId === deleteTarget?.id ? (
-                                <>
-                                    <Loader2 data-icon="inline-start" className="h-3.5 w-3.5 animate-spin" />
-                                    Deleting...
-                                </>
-                            ) : (
-                                <>
-                                    <Trash2 data-icon="inline-start" className="h-3.5 w-3.5" />
-                                    Delete
-                                </>
-                            )}
-                        </AppButton>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
-    );
-}
-
-export default function LandlordDashboardPage() {
-    return (
-        <RoleGuard allowedRoles={['LANDLORD']}>
-            <LandlordDashboardContent />
-        </RoleGuard>
     );
 }

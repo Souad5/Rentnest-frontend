@@ -7,9 +7,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-heading: var(--font-fraunces), ui-serif, Georgia, serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,6 +40,11 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Brand extras: amber highlight + ink charcoal (see SPEC: 3 brand colors) */
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -48,93 +54,107 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * RentNest brand palette — three colors plus a warm neutral:
+ *   1. Teal  (primary)    — actions, links, focus
+ *   2. Amber (highlight)  — ratings, badges, small accents
+ *   3. Ink   (charcoal)   — dark feature bands and CTA panels
+ * Only use these through token classes so light/dark contrast stays correct.
+ */
 :root {
-  /* Light Mode - Crisp Modern Blue Theme */
-  --background: oklch(0.99 0.005 250);
-  --foreground: oklch(0.18 0.035 260);
+  --background: oklch(0.985 0.004 85);
+  --foreground: oklch(0.21 0.008 60);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.035 260);
+  --card-foreground: oklch(0.21 0.008 60);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.035 260);
+  --popover-foreground: oklch(0.21 0.008 60);
 
-  /* Primary: Electric Vibrant RentNest Blue */
-  --primary: oklch(0.55 0.22 255);
-  --primary-foreground: oklch(0.99 0 0);
+  --primary: oklch(0.5 0.095 182);
+  --primary-foreground: oklch(0.99 0.004 85);
 
-  --secondary: oklch(0.95 0.025 250);
-  --secondary-foreground: oklch(0.32 0.12 255);
+  --secondary: oklch(0.955 0.008 85);
+  --secondary-foreground: oklch(0.25 0.01 60);
 
-  --muted: oklch(0.96 0.015 250);
-  --muted-foreground: oklch(0.48 0.045 255);
+  --muted: oklch(0.955 0.006 85);
+  --muted-foreground: oklch(0.48 0.012 60);
 
-  --accent: oklch(0.94 0.035 250);
-  --accent-foreground: oklch(0.38 0.16 255);
+  --accent: oklch(0.95 0.025 182);
+  --accent-foreground: oklch(0.3 0.06 182);
 
-  --destructive: oklch(0.58 0.22 25);
-  --border: oklch(0.91 0.018 250);
-  --input: oklch(0.91 0.018 250);
-  --ring: oklch(0.55 0.22 255);
+  --highlight: oklch(0.79 0.15 75);
+  --highlight-foreground: oklch(0.24 0.05 60);
 
-  /* Dynamic Multi-Color Chart Palette */
-  --chart-1: oklch(0.55 0.22 255); /* Royal Blue */
-  --chart-2: oklch(0.6 0.18 190); /* Cyan Teal */
-  --chart-3: oklch(0.65 0.2 150); /* Emerald */
-  --chart-4: oklch(0.6 0.22 300); /* Purple Violet */
-  --chart-5: oklch(0.65 0.22 35); /* Coral Gold */
+  --ink: oklch(0.22 0.01 60);
+  --ink-foreground: oklch(0.97 0.004 85);
+
+  --destructive: oklch(0.56 0.2 27);
+  --border: oklch(0.91 0.008 85);
+  --input: oklch(0.9 0.008 85);
+  --ring: oklch(0.5 0.095 182);
+
+  --chart-1: oklch(0.5 0.095 182);
+  --chart-2: oklch(0.76 0.15 75);
+  --chart-3: oklch(0.42 0.015 60);
+  --chart-4: oklch(0.72 0.09 182);
+  --chart-5: oklch(0.86 0.09 80);
 
   --radius: 0.75rem;
 
-  --sidebar: oklch(0.985 0.008 250);
-  --sidebar-foreground: oklch(0.18 0.035 260);
-  --sidebar-primary: oklch(0.55 0.22 255);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.035 250);
-  --sidebar-accent-foreground: oklch(0.38 0.16 255);
-  --sidebar-border: oklch(0.91 0.018 250);
-  --sidebar-ring: oklch(0.55 0.22 255);
+  --sidebar: oklch(0.975 0.005 85);
+  --sidebar-foreground: oklch(0.21 0.008 60);
+  --sidebar-primary: oklch(0.5 0.095 182);
+  --sidebar-primary-foreground: oklch(0.99 0.004 85);
+  --sidebar-accent: oklch(0.94 0.025 182);
+  --sidebar-accent-foreground: oklch(0.3 0.06 182);
+  --sidebar-border: oklch(0.91 0.008 85);
+  --sidebar-ring: oklch(0.5 0.095 182);
 }
 
 .dark {
-  /* Dark Mode - Deep Navy Slate Theme */
-  --background: oklch(0.13 0.028 260);
-  --foreground: oklch(0.98 0.01 250);
-  --card: oklch(0.17 0.032 260);
-  --card-foreground: oklch(0.98 0.01 250);
-  --popover: oklch(0.17 0.032 260);
-  --popover-foreground: oklch(0.98 0.01 250);
+  --background: oklch(0.17 0.006 60);
+  --foreground: oklch(0.96 0.004 85);
+  --card: oklch(0.21 0.007 60);
+  --card-foreground: oklch(0.96 0.004 85);
+  --popover: oklch(0.21 0.007 60);
+  --popover-foreground: oklch(0.96 0.004 85);
 
-  /* Primary: Neon Electric Blue */
-  --primary: oklch(0.62 0.22 255);
-  --primary-foreground: oklch(0.99 0 0);
+  --primary: oklch(0.72 0.11 182);
+  --primary-foreground: oklch(0.17 0.02 182);
 
-  --secondary: oklch(0.22 0.04 260);
-  --secondary-foreground: oklch(0.95 0.01 250);
+  --secondary: oklch(0.26 0.008 60);
+  --secondary-foreground: oklch(0.95 0.004 85);
 
-  --muted: oklch(0.21 0.03 260);
-  --muted-foreground: oklch(0.68 0.04 250);
+  --muted: oklch(0.25 0.007 60);
+  --muted-foreground: oklch(0.74 0.01 70);
 
-  --accent: oklch(0.24 0.045 260);
-  --accent-foreground: oklch(0.98 0.01 250);
+  --accent: oklch(0.29 0.035 182);
+  --accent-foreground: oklch(0.95 0.01 182);
 
-  --destructive: oklch(0.65 0.22 22);
-  --border: oklch(1 0 0 / 12%);
+  --highlight: oklch(0.81 0.14 78);
+  --highlight-foreground: oklch(0.22 0.04 60);
+
+  --ink: oklch(0.24 0.009 60);
+  --ink-foreground: oklch(0.96 0.004 85);
+
+  --destructive: oklch(0.66 0.19 25);
+  --border: oklch(1 0 0 / 11%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.22 255);
+  --ring: oklch(0.72 0.11 182);
 
-  --chart-1: oklch(0.65 0.22 255);
-  --chart-2: oklch(0.7 0.18 190);
-  --chart-3: oklch(0.72 0.2 150);
-  --chart-4: oklch(0.68 0.22 300);
-  --chart-5: oklch(0.72 0.22 35);
+  --chart-1: oklch(0.72 0.11 182);
+  --chart-2: oklch(0.8 0.14 78);
+  --chart-3: oklch(0.7 0.015 70);
+  --chart-4: oklch(0.55 0.08 182);
+  --chart-5: oklch(0.62 0.1 70);
 
-  --sidebar: oklch(0.15 0.032 260);
-  --sidebar-foreground: oklch(0.98 0.01 250);
-  --sidebar-primary: oklch(0.62 0.22 255);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.24 0.045 260);
-  --sidebar-accent-foreground: oklch(0.98 0.01 250);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.62 0.22 255);
+  --sidebar: oklch(0.19 0.007 60);
+  --sidebar-foreground: oklch(0.96 0.004 85);
+  --sidebar-primary: oklch(0.72 0.11 182);
+  --sidebar-primary-foreground: oklch(0.17 0.02 182);
+  --sidebar-accent: oklch(0.27 0.03 182);
+  --sidebar-accent-foreground: oklch(0.95 0.01 182);
+  --sidebar-border: oklch(1 0 0 / 11%);
+  --sidebar-ring: oklch(0.72 0.11 182);
 }
 
 @layer base {
@@ -148,9 +168,3 @@
     @apply font-sans;
   }
 }
-
-/* Replace with the actual class or ID of the Stripe element */
-/* [class*="stripe"],
-[id*="stripe"] {
-  display: none !important;
-} */
